@@ -1,8 +1,10 @@
 import streamlit as st
+from constants import UP
 from deep_Q_network import *
+from game import GameWrapper
 from utils import *
 from utils.parser import args
-
+import matplotlib.pyplot as plt
 torch.autograd.set_detect_anomaly(True)
 # or r in (-10, 50, 200)
 def optimization(it, r): return it % K_FRAME == 0 and r
@@ -16,11 +18,8 @@ ABS_PATH = Path().absolute()
 RESULTS_PATH = ABS_PATH / "results"
 PATH_MODELS = start(args)
 
-# Set environment
-ale = ALEInterface()
-ale.loadROM(Pacman)
 
-env = gym.make("MsPacman-v0")
+env = GameWrapper()
 
 # Set neural networks
 policy_DQN = DQN(N_ACTIONS).to(device)
@@ -41,7 +40,41 @@ memory = ReplayMemory(REPLAY_MEMORY_SIZE, BATCH_SIZE)
 dmaker = DecisionMaker(0, policy_DQN)
 display = Display(args.stream, args.image)
 
-# one_game = [] # useful to save a video
+
+def extend_walls(img):
+    extension = np.array([[WALL_COLOR_GRAY for x in range(160)]
+                         for y in range(3)])
+    return np.concatenate([extension, img, extension])
+
+
+# def unit_prepr_obs(obs):
+#     gray_img = cv2.cvtColor(obs, cv2.COLOR_RGB2GRAY)
+#     trimmed_img = gray_img[1:171]
+#     extended_img = extend_walls(trimmed_img)
+#     canvas = extended_img[1::4, 1::4]
+#     pills_walls = canvas.copy()
+#     pills_walls[canvas != WALL_COLOR_GRAY] = 0
+#     pacman_monsters = canvas.copy()
+#     pacman_monsters[(canvas == WALL_COLOR_GRAY) | (canvas == BACKGROUND_GRAY)] = 0
+#     pacman = pacman_monsters.copy()
+#     monsters = pacman_monsters.copy()
+#     pacman[pacman_monsters != PACMAN_COLOR_GRAY] = 0
+#     monsters[pacman_monsters == PACMAN_COLOR_GRAY] = 0
+#     return np.stack(
+#         [
+#             pills_walls.astype(np.float32),
+#             pacman.astype(np.float32),
+#             monsters.astype(np.float32),
+#         ]
+#     )
+
+
+def unit_prepr_obs(obs):
+    gray_img = cv2.cvtColor(obs, cv2.COLOR_RGB2GRAY)
+    cv2.imshow("test", gray_img)
+    # extended_img = extend_walls(trimmed_img)
+    return np.stack([gray_img.astype(np.float32)])
+
 
 # Main loop
 while True:
@@ -52,19 +85,19 @@ while True:
     obs = env.reset()
     lives = 3
     jump_dead_step = False
-    old_action = 0
+    old_action = UP
 
     # Avoid beginning steps of the game
     # for i_step in range(AVOIDED_STEPS):
     #     obs, reward, done, info = env.step(3)
 
-    observations = init_obs(env)
-    obs, reward, done, info = env.step(3)
-    state = preprocess_observation(observations, obs)
-
+    #observations = unit_prepr_obs(obs[0])
+    obs, reward, done, info = env.step(UP)
+    state = unit_prepr_obs(obs)
+    state = torch.from_numpy(state)
     got_reward = False
 
-    old_action = 3
+    old_action = UP
 
     no_move_count = 0
     while True:

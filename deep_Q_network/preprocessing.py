@@ -54,7 +54,8 @@ def preprocess_observation(observations, new_obs):
 def init_obs(env):
     return [unit_prepr_obs(env.step(0)[0]) for i_step in range(4)][::-1]
 
-
+def init_obs(observation):
+    return [unit_prepr_obs(env.step(0)[0]) for i_step in range(4)][::-1]
 # def unit_prepr_obs(obs):
 #     cropped_img = obs[1:176:2, ::2]
 #     gray_truncated_img = cv2.cvtColor(cropped_img, cv2.COLOR_RGB2GRAY)

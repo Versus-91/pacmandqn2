@@ -24,7 +24,7 @@ class GameController(object):
         self.fruit = None
         self.pause = Pause(False)
         self.level = 0
-        self.lives = 5
+        self.lives = 3
         self.score = 0
         self.textgroup = TextGroup()
         self.lifesprites = LifeSprites(self.lives)
@@ -156,7 +156,7 @@ class GameController(object):
 
         if self.pacman.alive:
             if not self.pause.paused:
-                self.pacman.update(dt,action)
+                self.pacman.update(dt, action)
         else:
             self.pacman.update(dt)
         if self.flashBG:
@@ -174,7 +174,7 @@ class GameController(object):
         self.checkEvents()
         self.render()
         surface_array = pygame.surfarray.array3d(pygame.display.get_surface())
-        return (surface_array, self.lives, self.score)
+        return (surface_array, self.score, self.lives <= 0, self.lives)
 
     def checkEvents(self):
         for event in pygame.event.get():
@@ -269,14 +269,14 @@ class GameController(object):
     def nextLevel(self):
         self.showEntities()
         self.level += 1
-        self.pause.paused = True
+        self.pause.paused = False
         self.startGame()
         self.textgroup.updateLevel(self.level)
 
     def restartGame(self):
-        self.lives = 5
+        self.lives = 3
         self.level = 0
-        self.pause.paused = True
+        self.pause.paused = False
         self.fruit = None
         self.startGame()
         self.score = 0
@@ -287,7 +287,7 @@ class GameController(object):
         self.fruitCaptured = []
 
     def resetLevel(self):
-        self.pause.paused = True
+        self.pause.paused = False
         self.pacman.reset()
         self.ghosts.reset()
         self.fruit = None

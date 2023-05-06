@@ -12,7 +12,7 @@ def my_rely(x):
 
 class DQN(nn.Module):
 
-    CONV_N_MAPS = [4, 32, 32]
+    CONV_N_MAPS = [3, 32, 32]
     CONV_KERNEL_SIZES = [(4, 4), (2, 2)]
     CONV_STRIDES = [2, 2]
     CONV_PADDINGS = [2, 0]
@@ -28,8 +28,8 @@ class DQN(nn.Module):
             stride=self.CONV_STRIDES[i],
             padding=self.CONV_PADDINGS[i],
         )
-        self.conv1 = conv2d(0)
-        self.bn1 = nn.BatchNorm2d(self.CONV_N_MAPS[1])
+        self.conv1 = nn.Conv2d()
+        self.bn1 = nn.batc(self.CONV_N_MAPS[1])
         self.conv2 = conv2d(1)
         self.bn2 = nn.BatchNorm2d(self.CONV_N_MAPS[2])
 
