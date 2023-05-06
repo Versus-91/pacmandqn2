@@ -4,7 +4,9 @@ from utils import *
 from utils.parser import args
 
 torch.autograd.set_detect_anomaly(True)
-optimization = lambda it, r: it % K_FRAME == 0 and r  # or r in (-10, 50, 200)
+# or r in (-10, 50, 200)
+def optimization(it, r): return it % K_FRAME == 0 and r
+
 
 episodes = 0
 learn_counter = 0
@@ -53,8 +55,8 @@ while True:
     old_action = 0
 
     # Avoid beginning steps of the game
-    for i_step in range(AVOIDED_STEPS):
-        obs, reward, done, info = env.step(3)
+    # for i_step in range(AVOIDED_STEPS):
+    #     obs, reward, done, info = env.step(3)
 
     observations = init_obs(env)
     obs, reward, done, info = env.step(3)
@@ -69,7 +71,8 @@ while True:
         if dmaker.steps_done > MAX_FRAMES:
             break
         # epsilon greedy decision maker
-        action = dmaker.select_action(state, policy_DQN, display, learn_counter)
+        action = dmaker.select_action(
+            state, policy_DQN, display, learn_counter)
         action_ = ACTIONS[old_action][action.item()]
 
         obs, reward_, done, info = env.step(action_)
@@ -128,8 +131,10 @@ while True:
         torch.cuda.empty_cache()
 
     if episodes % SAVE_MODEL == 0:
-        torch.save(policy_DQN.state_dict(), PATH_MODELS / f"policy-model-{episodes}.pt")
-        torch.save(target_DQN.state_dict(), PATH_MODELS / f"target-model-{episodes}.pt")
+        torch.save(policy_DQN.state_dict(), PATH_MODELS /
+                   f"policy-model-{episodes}.pt")
+        torch.save(target_DQN.state_dict(), PATH_MODELS /
+                   f"target-model-{episodes}.pt")
         display.save()
 
     display.data.round()
