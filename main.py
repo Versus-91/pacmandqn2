@@ -41,12 +41,6 @@ dmaker = DecisionMaker(0, policy_DQN)
 display = Display(args.stream, args.image)
 
 
-def extend_walls(img):
-    extension = np.array([[WALL_COLOR_GRAY for x in range(160)]
-                         for y in range(3)])
-    return np.concatenate([extension, img, extension])
-
-
 # def unit_prepr_obs(obs):
 #     gray_img = cv2.cvtColor(obs, cv2.COLOR_RGB2GRAY)
 #     trimmed_img = gray_img[1:171]
@@ -68,12 +62,12 @@ def extend_walls(img):
 #         ]
 #     )
 
-
-def unit_prepr_obs(obs):
-    gray_img = cv2.cvtColor(obs, cv2.COLOR_RGB2GRAY)
-    cv2.imshow("test", gray_img)
-    # extended_img = extend_walls(trimmed_img)
-    return np.stack([gray_img.astype(np.float32)])
+def process_image(state):
+    screen_tensor = torch.from_numpy(
+        state.transpose((2, 0, 1))).float() / 255.0
+    # Add a batch dimension to the tensor
+    screen_tensor = screen_tensor.unsqueeze(0)
+    return screen_tensor.to(device)
 
 
 # Main loop
@@ -91,12 +85,10 @@ while True:
     # for i_step in range(AVOIDED_STEPS):
     #     obs, reward, done, info = env.step(3)
 
-    #observations = unit_prepr_obs(obs[0])
+    # observations = unit_prepr_obs(obs[0])
     obs, reward, done, info = env.step(UP)
-    state = unit_prepr_obs(obs)
-    state = torch.from_numpy(state)
     got_reward = False
-
+    state = process_image(obs)
     old_action = UP
 
     no_move_count = 0
@@ -113,7 +105,7 @@ while True:
         reward = transform_reward(reward_)
 
         update_all = False
-        if info["lives"] < lives:
+        if info < lives:
             lives -= 1
             jump_dead_step = True
             got_reward = False

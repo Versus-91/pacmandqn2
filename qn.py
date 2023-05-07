@@ -1,5 +1,4 @@
 
-import os
 import gym
 import cv2
 import torch
@@ -11,44 +10,38 @@ import numpy as np
 import random
 import datetime
 from constants import *
+import torchvision.transforms as transforms
 
 from game import GameWrapper
 reward_number = 0.37
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-class CNN(torch.nn.Module):
+class PacmanModel(torch.nn.Module):
     def __init__(self):
-        super(CNN, self).__init__()
-        self.convolution1 = nn.Conv2d(
-            in_channels=3, out_channels=32, kernel_size=3)
-        self.convolution2 = nn.Conv2d(
-            in_channels=32, out_channels=32, kernel_size=5)
-        self.convolution3 = nn.Conv2d(
-            in_channels=32, out_channels=64, kernel_size=7)
-        self.fc1 = nn.Linear(in_features=1792, out_features=256)
-        self.fc2 = nn.Linear(in_features=256, out_features=128)
-        self.fc3 = nn.Linear(in_features=128, out_features=256)
-        self.fc4 = nn.Linear(in_features=256, out_features=32)
-        self.fc5 = nn.Linear(in_features=32, out_features=9)
+        super().__init__()
+        self.conv1 = torch.nn.Conv2d(
+            in_channels=3, out_channels=16, kernel_size=3, stride=1, padding=1)
+        self.conv2 = torch.nn.Conv2d(
+            in_channels=16, out_channels=32, kernel_size=3, stride=1, padding=1)
+        self.fc1 = torch.nn.Linear(in_features=32 * 8 * 8, out_features=128)
+        self.fc2 = torch.nn.Linear(in_features=128, out_features=4)
 
     def forward(self, x):
-        x = x.cuda()
-        x = F.relu(F.max_pool2d(self.convolution1(torch.from_numpy(x).float), 3))
-        x = F.relu(F.max_pool2d(self.convolution2(x), 3))
-        x = F.relu(F.max_pool2d(self.convolution3(x), 3, 2))
-        x = x.reshape(x.size(0), - 1)
+        x = F.relu(self.conv1(x))
+        x = F.max_pool2d(x, kernel_size=2, stride=2)
+        x = F.relu(self.conv2(x))
+        x = F.max_pool2d(x, kernel_size=2, stride=2)
+        x = x.view(-1, 32 * 8 * 8)
         x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        x = F.relu(self.fc3(x))
-        x = F.relu(self.fc4(x))
-        x = self.fc5(x)
+        x = self.fc2(x)
         return x
 
 
-model = CNN()
+model = PacmanModel()
 
 
-model = model.cuda()
+model = model.to(device)
 
 
 criterion = nn.MSELoss()
@@ -75,11 +68,20 @@ class DQNAgent:
             self.memory_n.append((state, action, reward, next_state, done))
 
     def act(self, state):
-        # if np.random.rand() <= self.epsilon:
-        #     return random.choice([UP, DOWN, LEFT, RIGHT])
-        state_tensor = torch.from_numpy(state).float()
-        act_values = self.model(state_tensor).cpu().detach().numpy()
-        return np.argmax(act_values[0])  # returns action
+        if np.random.rand() <= self.epsilon:
+            return random.choice([UP, DOWN, LEFT, RIGHT])
+        screen_tensor = torch.from_numpy(
+            state.transpose((2, 0, 1))).float() / 255.0
+        # Add a batch dimension to the tensor
+        screen_tensor = screen_tensor.unsqueeze(0)
+        # Create a conv2d module with input size of (batch_size, num_channels, height, width)
+        act_values = self.model(screen_tensor.to(device)
+                                ).cpu().detach().numpy()
+        if len(act_values) == 0 or np.any(act_values < 0):
+            # handle empty or negative arrays
+            return random.choice([UP, DOWN, LEFT, RIGHT])
+        result = np.argmax(act_values[0])
+        return result  # returns action
 
     def replay(self, batch_size):
         if len(agent.memory_n) > batch_size / 2:
@@ -114,7 +116,7 @@ class DQNAgent:
                 # print("target_f: ", target_f)
                 target_f[0][action] = target
                 target_f[0][random.choice(
-                    [i for i in range(0, 9) if i not in [action]])] = target_max
+                    [i for i in range(0, 4) if i not in [action]])] = target_max
                 # print("target_f[0][several actions]: ", target_f)
             self.train(next_state, target_f, epochs=1)
         if self.epsilon > self.epsilon_min:
@@ -177,9 +179,8 @@ for e in range(EPISODES):
         state = next_state
         if done:
             vw.release()
-            path = './results/' + "Reward_number_" + str(reward_number) + '.pt'
-            agent.save(path)
-            print("episode: {}/{}, score: {}, e: {:.2}".format(e +
-                  1, EPISODES, time, agent.epsilon))
+            agent.save('./results/' + "Reward_number_" +
+                       str(reward_number) + '.pt')
+            print("saved")
         if (len(agent.memory_p) > batch_size) & (len(agent.memory_n) > batch_size/2):
             agent.replay(batch_size)
