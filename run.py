@@ -26,6 +26,7 @@ class GameController(object):
         self.level = 0
         self.lives = 3
         self.score = 0
+        self.last_score = 0
         self.textgroup = TextGroup()
         self.lifesprites = LifeSprites(self.lives)
         self.flashBG = False
@@ -174,7 +175,11 @@ class GameController(object):
         self.checkEvents()
         self.render()
         surface_array = pygame.surfarray.array3d(pygame.display.get_surface())
-        return (surface_array, self.score, self.lives <= 0, self.lives)
+        reward = 0
+        if self.last_score != self.score:   
+            reward = 10
+        self.last_score = self.score
+        return (surface_array, reward, self.lives <= 0, self.lives)
 
     def checkEvents(self):
         for event in pygame.event.get():
