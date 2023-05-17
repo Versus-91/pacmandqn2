@@ -116,7 +116,7 @@ class GameController(object):
         self.nodes.denyAccessList(15, 26, UP, self.ghosts)
 
     def update(self):
-        dt = self.clock.tick(30) / 1000.0
+        dt = self.clock.tick(60) / 1000.0
         self.textgroup.update(dt)
         self.pellets.update(dt)
         if not self.pause.paused:
@@ -152,11 +152,11 @@ class GameController(object):
         self.textgroup.update(dt)
         self.pellets.update(dt)
         if not self.pause.paused:
-            self.ghosts.update(dt)
+            #self.ghosts.update(dt)
             if self.fruit is not None:
                 self.fruit.update(dt)
             self.checkPelletEvents()
-            self.checkGhostEvents()
+            #self.checkGhostEvents()
             self.checkFruitEvents()
 
         if self.pacman.alive:
@@ -317,7 +317,7 @@ class GameController(object):
         if self.fruit is not None:
             self.fruit.render(self.screen)
         self.pacman.render(self.screen)
-        self.ghosts.render(self.screen)
+        #self.ghosts.render(self.screen)
         self.textgroup.render(self.screen)
 
         for i in range(len(self.lifesprites.images)):
