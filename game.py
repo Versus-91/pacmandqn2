@@ -12,13 +12,14 @@ class GameWrapper:
         self.controller = GameController()
         self.action = UP
 
-    def reset(self):
+    def starz(self):
         self.controller.startGame()
-        return self.step(RIGHT)
-
+    def restart(self):
+            self.controller.restartGame()
     def step(self, action):
         data = self.controller.perform_action(action)
         return (data[0], data[1], data[2], data[3])
+
 
     def process_image(self, obs):
         # image = cv2.cvtColor(obs, cv2.COLOR_BGR2GRAY)

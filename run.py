@@ -1,3 +1,6 @@
+import cv2
+from matplotlib import pyplot as plt
+import numpy as np
 import pygame
 from pygame.locals import *
 from constants import *
@@ -49,6 +52,7 @@ class GameController(object):
         self.background = self.background_norm
 
     def startGame(self):
+        self.textgroup.hideText()
         self.mazedata.loadMaze(self.level)
         self.mazesprites = MazeSprites(
             self.mazedata.obj.name+".txt", self.mazedata.obj.name+"_rotation.txt")
@@ -59,24 +63,24 @@ class GameController(object):
         self.pacman = Pacman(self.nodes.getNodeFromTiles(
             *self.mazedata.obj.pacmanStart))
         self.pellets = PelletGroup(self.mazedata.obj.name+".txt")
-        self.ghosts = GhostGroup(self.nodes.getStartTempNode(), self.pacman)
+        #self.ghosts = GhostGroup(self.nodes.getStartTempNode(), self.pacman)
 
-        self.ghosts.pinky.setStartNode(
-            self.nodes.getNodeFromTiles(*self.mazedata.obj.addOffset(2, 3)))
-        self.ghosts.inky.setStartNode(
-            self.nodes.getNodeFromTiles(*self.mazedata.obj.addOffset(0, 3)))
-        self.ghosts.clyde.setStartNode(
-            self.nodes.getNodeFromTiles(*self.mazedata.obj.addOffset(4, 3)))
-        self.ghosts.setSpawnNode(self.nodes.getNodeFromTiles(
-            *self.mazedata.obj.addOffset(2, 3)))
-        self.ghosts.blinky.setStartNode(
-            self.nodes.getNodeFromTiles(*self.mazedata.obj.addOffset(2, 0)))
+        # self.ghosts.pinky.setStartNode(
+        #     self.nodes.getNodeFromTiles(*self.mazedata.obj.addOffset(2, 3)))
+        # self.ghosts.inky.setStartNode(
+        #     self.nodes.getNodeFromTiles(*self.mazedata.obj.addOffset(0, 3)))
+        # self.ghosts.clyde.setStartNode(
+        #     self.nodes.getNodeFromTiles(*self.mazedata.obj.addOffset(4, 3)))
+        # self.ghosts.setSpawnNode(self.nodes.getNodeFromTiles(
+        #     *self.mazedata.obj.addOffset(2, 3)))
+        # self.ghosts.blinky.setStartNode(
+        #     self.nodes.getNodeFromTiles(*self.mazedata.obj.addOffset(2, 0)))
 
         self.nodes.denyHomeAccess(self.pacman)
-        self.nodes.denyHomeAccessList(self.ghosts)
-        self.ghosts.inky.startNode.denyAccess(RIGHT, self.ghosts.inky)
-        self.ghosts.clyde.startNode.denyAccess(LEFT, self.ghosts.clyde)
-        self.mazedata.obj.denyGhostsAccess(self.ghosts, self.nodes)
+        #self.nodes.denyHomeAccessList(self.ghosts)
+        #self.ghosts.inky.startNode.denyAccess(RIGHT, self.ghosts.inky)
+        #self.ghosts.clyde.startNode.denyAccess(LEFT, self.ghosts.clyde)
+        #self.mazedata.obj.denyGhostsAccess(self.ghosts, self.nodes)
 
     def startGame_old(self):
         self.mazedata.loadMaze(self.level)
@@ -116,11 +120,11 @@ class GameController(object):
         self.textgroup.update(dt)
         self.pellets.update(dt)
         if not self.pause.paused:
-            self.ghosts.update(dt)
+            #self.ghosts.update(dt)
             if self.fruit is not None:
                 self.fruit.update(dt)
             self.checkPelletEvents()
-            self.checkGhostEvents()
+            #self.checkGhostEvents()
             self.checkFruitEvents()
 
         if self.pacman.alive:
@@ -174,12 +178,14 @@ class GameController(object):
             afterPauseMethod()
         self.checkEvents()
         self.render()
+        while pygame.event.peek(pygame.USEREVENT):
+            pygame.event.wait()
         surface_array = pygame.surfarray.array3d(pygame.display.get_surface())
         reward = 0
-        if self.last_score != self.score:   
+        if self.last_score != self.score:
             reward = 10
         self.last_score = self.score
-        return (surface_array, reward, self.lives <= 0, self.lives)
+        return (surface_array, reward, self.lives == 0 or (self.pellets.isEmpty()), self.lives)
 
     def checkEvents(self):
         for event in pygame.event.get():
@@ -194,6 +200,7 @@ class GameController(object):
                             self.showEntities()
                         else:
                             self.textgroup.showText(PAUSETXT)
+                            self.textgroup.hideText()
                             # self.hideEntities()
 
     def checkPelletEvents(self):
@@ -212,7 +219,7 @@ class GameController(object):
             if self.pellets.isEmpty():
                 self.flashBG = True
                 self.hideEntities()
-                self.pause.setPause(pauseTime=3, func=self.nextLevel)
+                #self.pause.setPause(pauseTime=3, func=self.nextLevel)
 
     def checkGhostEvents(self):
         for ghost in self.ghosts:
@@ -236,10 +243,10 @@ class GameController(object):
                         if self.lives <= 0:
                             self.textgroup.showText(GAMEOVERTXT)
                             self.pause.setPause(
-                                pauseTime=3, func=self.restartGame)
+                                pauseTime=1, func=self.restartGame)
                         else:
                             self.pause.setPause(
-                                pauseTime=3, func=self.resetLevel)
+                                pauseTime=1, func=self.resetLevel)
 
     def checkFruitEvents(self):
         if self.pellets.numEaten == 50 or self.pellets.numEaten == 140:
@@ -287,7 +294,8 @@ class GameController(object):
         self.score = 0
         self.textgroup.updateScore(self.score)
         self.textgroup.updateLevel(self.level)
-        self.textgroup.showText(READYTXT)
+        #self.textgroup.showText(READYTXT)
+        self.textgroup.hideText()
         self.lifesprites.resetLives(self.lives)
         self.fruitCaptured = []
 

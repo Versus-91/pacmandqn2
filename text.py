@@ -46,7 +46,7 @@ class TextGroup(object):
         self.nextid = 10
         self.alltext = {}
         self.setupText()
-        self.showText(READYTXT)
+        #self.showText(READYTXT)
 
     def addText(self, text, color, x, y, size, time=None, id=None):
         self.nextid += 1

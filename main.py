@@ -1,7 +1,5 @@
 import streamlit as st
-from constants import UP
 from deep_Q_network import *
-from game import GameWrapper
 from utils import *
 from utils.parser import args
 import matplotlib.pyplot as plt
@@ -19,8 +17,10 @@ RESULTS_PATH = ABS_PATH / "results"
 PATH_MODELS = start(args)
 
 
-env = GameWrapper()
+ale = ALEInterface()
+ale.loadROM(Pacman)
 
+env = gym.make("MsPacman-v0")
 # Set neural networks
 policy_DQN = DQN(N_ACTIONS).to(device)
 target_DQN = DQN(N_ACTIONS).to(device)
