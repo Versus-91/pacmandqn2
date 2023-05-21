@@ -63,24 +63,72 @@ class GameController(object):
         self.pacman = Pacman(self.nodes.getNodeFromTiles(
             *self.mazedata.obj.pacmanStart))
         self.pellets = PelletGroup(self.mazedata.obj.name+".txt")
-        #self.ghosts = GhostGroup(self.nodes.getStartTempNode(), self.pacman)
+        self.ghosts = GhostGroup(self.nodes.getStartTempNode(), self.pacman)
 
-        # self.ghosts.pinky.setStartNode(
-        #     self.nodes.getNodeFromTiles(*self.mazedata.obj.addOffset(2, 3)))
-        # self.ghosts.inky.setStartNode(
-        #     self.nodes.getNodeFromTiles(*self.mazedata.obj.addOffset(0, 3)))
-        # self.ghosts.clyde.setStartNode(
-        #     self.nodes.getNodeFromTiles(*self.mazedata.obj.addOffset(4, 3)))
-        # self.ghosts.setSpawnNode(self.nodes.getNodeFromTiles(
-        #     *self.mazedata.obj.addOffset(2, 3)))
-        # self.ghosts.blinky.setStartNode(
-        #     self.nodes.getNodeFromTiles(*self.mazedata.obj.addOffset(2, 0)))
+        self.ghosts.pinky.setStartNode(
+            self.nodes.getNodeFromTiles(*self.mazedata.obj.addOffset(2, 3)))
+        self.ghosts.inky.setStartNode(
+            self.nodes.getNodeFromTiles(*self.mazedata.obj.addOffset(0, 3)))
+        self.ghosts.clyde.setStartNode(
+            self.nodes.getNodeFromTiles(*self.mazedata.obj.addOffset(4, 3)))
+        self.ghosts.setSpawnNode(self.nodes.getNodeFromTiles(
+            *self.mazedata.obj.addOffset(2, 3)))
+        self.ghosts.blinky.setStartNode(
+            self.nodes.getNodeFromTiles(*self.mazedata.obj.addOffset(2, 0)))
 
         self.nodes.denyHomeAccess(self.pacman)
-        #self.nodes.denyHomeAccessList(self.ghosts)
-        #self.ghosts.inky.startNode.denyAccess(RIGHT, self.ghosts.inky)
-        #self.ghosts.clyde.startNode.denyAccess(LEFT, self.ghosts.clyde)
-        #self.mazedata.obj.denyGhostsAccess(self.ghosts, self.nodes)
+        self.nodes.denyHomeAccessList(self.ghosts)
+        self.ghosts.inky.startNode.denyAccess(RIGHT, self.ghosts.inky)
+        self.ghosts.clyde.startNode.denyAccess(LEFT, self.ghosts.clyde)
+        self.mazedata.obj.denyGhostsAccess(self.ghosts, self.nodes)
+
+    def get_sate(self):
+        state = []
+        ghosts_position = []
+        raw_maze_data = []
+        pellets_position = []
+        with open('maze1.txt', 'r') as f:
+            for line in f:
+                raw_maze_data.append(line.split())
+        maze_data = np.array(raw_maze_data)
+        for idx, values in enumerate(maze_data):
+            for id, value in enumerate(values):
+                if value == '.' or value == 'p' or value == '+':
+                    maze_data[idx][id] = 1
+                else:
+                    maze_data[idx][id] = 0
+        for idx, values in enumerate(self.pellets.pelletList):
+            x = int(values.position.x / 16)
+            y = int(values.position.y / 16)
+            # pellets_position.append((x, y))
+            maze_data[y][x] = 2
+        for idx, values in enumerate(self.pellets.powerpellets):
+            x = int(values.position.x / 16)
+            y = int(values.position.y / 16)
+            maze_data[y][x] = 3
+        x = int(self.pacman.position.x / 16)
+        y = int(self.pacman.position.y / 16)
+        maze_data[y][x] = 4
+        x = int(self.ghosts.blinky.position.x / 16)
+        y = int(self.ghosts.blinky.position.y / 16)
+        maze_data[y][x] = 5
+
+        x = int(self.ghosts.inky.position.x / 16)
+        y = int(self.ghosts.inky.position.y / 16)
+        maze_data[y][x] = 5
+        x = int(self.ghosts.pinky.position.x / 16)
+        y = int(self.ghosts.pinky.position.y / 16)
+        maze_data[y][x] = 5
+
+        x = int(self.ghosts.clyde.position.x / 16)
+        y = int(self.ghosts.clyde.position.y / 16)
+        maze_data[y][x] = 5
+        maze_data = maze_data.astype(dtype=np.float32)
+        # state.append(maze_data)
+        # state.append(ghosts_position)
+        # state.append(self.pacman.direction)
+        # state.append(pellets_position)
+        return maze_data
 
     def startGame_old(self):
         self.mazedata.loadMaze(self.level)
@@ -120,11 +168,11 @@ class GameController(object):
         self.textgroup.update(dt)
         self.pellets.update(dt)
         if not self.pause.paused:
-            #self.ghosts.update(dt)
+            self.ghosts.update(dt)
             if self.fruit is not None:
                 self.fruit.update(dt)
             self.checkPelletEvents()
-            #self.checkGhostEvents()
+            self.checkGhostEvents()
             self.checkFruitEvents()
 
         if self.pacman.alive:
@@ -148,15 +196,15 @@ class GameController(object):
         self.render()
 
     def perform_action(self, action):
-        dt = self.clock.tick(30) / 1000.0
+        dt = self.clock.tick(60) / 1000.0
         self.textgroup.update(dt)
         self.pellets.update(dt)
         if not self.pause.paused:
-            #self.ghosts.update(dt)
+            self.ghosts.update(dt)
             if self.fruit is not None:
                 self.fruit.update(dt)
             self.checkPelletEvents()
-            #self.checkGhostEvents()
+            self.checkGhostEvents()
             self.checkFruitEvents()
 
         if self.pacman.alive:
@@ -178,14 +226,11 @@ class GameController(object):
             afterPauseMethod()
         self.checkEvents()
         self.render()
-        while pygame.event.peek(pygame.USEREVENT):
-            pygame.event.wait()
-        surface_array = pygame.surfarray.array3d(pygame.display.get_surface())
         reward = 0
         if self.last_score != self.score:
-            reward = 10
+            reward = self.score - self.last_score
         self.last_score = self.score
-        return (surface_array, reward, self.lives == 0 or (self.pellets.isEmpty()), self.lives)
+        return (self.get_sate(), reward, self.lives == 0 or (self.pellets.isEmpty()), self.lives)
 
     def checkEvents(self):
         for event in pygame.event.get():
@@ -201,7 +246,7 @@ class GameController(object):
                         else:
                             self.textgroup.showText(PAUSETXT)
                             self.textgroup.hideText()
-                            # self.hideEntities()
+                            self.hideEntities()
 
     def checkPelletEvents(self):
         pellet = self.pacman.eatPellets(self.pellets.pelletList)
@@ -219,7 +264,7 @@ class GameController(object):
             if self.pellets.isEmpty():
                 self.flashBG = True
                 self.hideEntities()
-                #self.pause.setPause(pauseTime=3, func=self.nextLevel)
+                self.pause.setPause(pauseTime=3, func=self.nextLevel)
 
     def checkGhostEvents(self):
         for ghost in self.ghosts:
@@ -294,7 +339,7 @@ class GameController(object):
         self.score = 0
         self.textgroup.updateScore(self.score)
         self.textgroup.updateLevel(self.level)
-        #self.textgroup.showText(READYTXT)
+        self.textgroup.showText(READYTXT)
         self.textgroup.hideText()
         self.lifesprites.resetLives(self.lives)
         self.fruitCaptured = []
@@ -312,12 +357,12 @@ class GameController(object):
 
     def render(self):
         self.screen.blit(self.background, (0, 0))
-        # self.nodes.render(self.screen)
+        #self.nodes.render(self.screen)
         self.pellets.render(self.screen)
         if self.fruit is not None:
             self.fruit.render(self.screen)
         self.pacman.render(self.screen)
-        #self.ghosts.render(self.screen)
+        self.ghosts.render(self.screen)
         self.textgroup.render(self.screen)
 
         for i in range(len(self.lifesprites.images)):

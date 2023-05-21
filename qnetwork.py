@@ -8,6 +8,7 @@ from constants import *
 from game import GameWrapper
 import random
 import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from collections import namedtuple, deque
 import torch
@@ -19,10 +20,23 @@ K_FRAME = 2
 def optimization(it, r): return it % K_FRAME == 0 and r
 
 
-# set up matplotlib
-is_ipython = 'inline' in matplotlib.get_backend()
-if is_ipython:
-    from IPython import display
+REVERSED = {0: 1, 1: 0, 2: 3, 3: 2}
+isreversed = (
+    lambda last_action, action: "default" if REVERSED[action] -
+    last_action else "reverse"
+)
+
+ACTIONS = {
+    1: [1, 4, 6, 5],
+    2: [5, 7, 3, 2],
+    3: [6, 8, 3, 2],
+    4: [1, 4, 8, 7],
+    5: [1, 4, 3, 2],
+    6: [1, 4, 3, 2],
+    7: [1, 4, 3, 2],
+    8: [1, 4, 3, 2],
+}
+
 BATCH_SIZE = 128
 GAMMA = 0.99
 EPS_START = 0.9
@@ -33,8 +47,9 @@ LR = 1e-4
 steps_done = 0
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 learn_counter = 0
-N_ACTIONS = 4
+N_ACTIONS = 5
 TARGET_UPDATE = 8_000  # here
+input_shape = 36 * 28
 
 
 def preprocess_observation(obs):
@@ -64,27 +79,20 @@ def preprocess_observation(obs):
 
 
 class DQN(nn.Module):
-    def __init__(self, output_dim):
+    def __init__(self, input_shape, num_actions):
         super(DQN, self).__init__()
-
-        self.device = device
-        self.conv1 = nn.Conv2d(1, 16, kernel_size=5, stride=2)
-        self.bn1 = nn.BatchNorm2d(16)
-        self.conv2 = nn.Conv2d(16, 32, kernel_size=5, stride=2)
-        self.bn2 = nn.BatchNorm2d(32)
-        self.conv3 = nn.Conv2d(32, 64, kernel_size=5, stride=2)
-        self.bn3 = nn.BatchNorm2d(64)
-
-        # (1, 84, 84) -> (16, 40, 40) -> (32, 18, 18) -> (64, 7, 7)
-
-        self.fc1 = nn.Linear(7*7*64, output_dim)
+        self.fc = nn.Sequential(
+            nn.Linear(input_shape, 128),
+            nn.ReLU(),
+            nn.Linear(128, 64),
+            nn.ReLU(),
+            nn.Linear(64, num_actions)
+        )
 
     def forward(self, x):
-        x = F.relu(self.bn1(self.conv1(x)))
-        x = F.relu(self.bn2(self.conv2(x)))
-        x = F.relu(self.bn3(self.conv3(x)))
-        x = torch.flatten(x, 1)  # flatten all dimensions except batch
-        return self.fc1(x)
+        x = x.view(x.size(0), -1)
+        x = self.fc(x)
+        return x
 
 
 def optimize_model(policy_DQN, target_DQN, memory, optimizer, learn_counter, device):
@@ -110,7 +118,7 @@ def optimize_model(policy_DQN, target_DQN, memory, optimizer, learn_counter, dev
     loss = criterion(predicted_targets,
                      labels.detach().unsqueeze(1)).to(device)
     # display.data.losses.append(loss.item())
-    #print("loss", loss.item())
+    # print("loss", loss.item())
     optimizer.zero_grad()
     loss.backward()
     for param in policy_DQN.parameters():
@@ -124,13 +132,14 @@ def optimize_model(policy_DQN, target_DQN, memory, optimizer, learn_counter, dev
     return learn_counter
 
 
-policy_DQN = DQN(4).to(device)
-target_DQN = DQN(4).to(device)
+policy_DQN = DQN(input_shape, N_ACTIONS).to(device)
+target_DQN = DQN(input_shape, N_ACTIONS).to(device)
 optimizer = optim.SGD(
     policy_DQN.parameters(), lr=LR, momentum=GAMMA, nesterov=True
 )
 steps_done = 0
 episodes = 0
+old_action = 0
 
 
 def transform_reward(reward):
@@ -139,6 +148,7 @@ def transform_reward(reward):
 
 def select_action(state, policy_DQN, learn_counter):
     global steps_done
+    global old_action
     sample = random.random()
     eps_threshold = max(EPS_START, EPS_END - (EPS_END - EPS_START)
                         * learn_counter / EPS_DECAY)
@@ -152,8 +162,9 @@ def select_action(state, policy_DQN, learn_counter):
     else:
         # Random action
         action = random.randrange(N_ACTIONS)
-        # while action == REVERSED[self.old_action]:
-        #     action = random.randrange(N_ACTIONS)
+        if old_action in REVERSED:
+            while action == REVERSED[old_action]:
+                action = random.randrange(N_ACTIONS)
         return torch.tensor([[action]], device=device, dtype=torch.long)
 
 
@@ -197,32 +208,26 @@ REWARDS = {
 
 
 def plot_durations(show_result=False):
+    plt.figure()
     plt.plot(np.arange(len(episode_durations)), episode_durations)
     plt.xlabel('Episode')
     plt.ylabel('Reward')
     plt.title('Rewards over Time')
-
     plt.pause(0.001)  # pause a bit so that plots are updated
-    if is_ipython:
-        if not show_result:
-            display.display(plt.gcf())
-            display.clear_output(wait=True)
-        else:
-            display.display(plt.gcf())
+    plt.savefig('plot.png')
+    
 
 
-obs = game.starz()
+obs = game.start()
 # Main loop
 while True:
     # if dmaker.steps_done > MAX_FRAMES:
     #     break
-
     episodes += 1
     lives = 3
     jump_dead_step = False
-    old_action = 0
     obs, reward, done, info = game.step(random.choice([UP, DOWN, LEFT, RIGHT]))
-    state = preprocess_observation(obs)
+    state = torch.from_numpy(obs).to(device)
     got_reward = False
     old_action = 3
     reward_sum = 0
@@ -233,7 +238,7 @@ while True:
         # actions = [0, 1, 2, 3]
         # predicted_targets = policy_DQN(state).gather(1, torch.tensor([actions], dtype=torch.long).to(device))
         # target_values = target_DQN(state).detach().max(1)[0]
-
+        state = state.view(1, -1)
         action = select_action(
             state, policy_DQN, learn_counter)
         # action_ = ACTIONS[old_action][action.item()],
@@ -246,6 +251,8 @@ while True:
             action = LEFT
         elif action_t == 3:
             action = RIGHT
+        elif action_t == 4:
+            action = None
         else:
             print("ERROR")
         obs, reward_, done, remaining_lives = game.step(action)
@@ -267,10 +274,11 @@ while True:
         # display.data.rewards.append(reward)
         # reward = torch.tensor([reward], device=device)
 
-        old_action = action
+        old_action = action_t
         # if reward != 0:
         #     dmaker.old_action = action.item()
-        next_state = preprocess_observation(obs)
+        next_state = torch.from_numpy(obs).to(device)
+        next_state = next_state.view(1, -1)
         if got_reward:
             reward_sum += reward
             reward = torch.tensor([reward], device=device)
@@ -280,7 +288,7 @@ while True:
                           reward, next_state, done)
 
         state = next_state
-        if got_reward:
+        if got_reward and steps_done % 2 == 0:
             optimize_model(
                 policy_DQN,
                 target_DQN,
@@ -297,11 +305,12 @@ while True:
         # display.stream(update_all)
         if done:
             # display.data.successes += remaining_lives > 0
+            episode_durations.append(reward_sum)
             print("done", reward_sum)
             torch.cuda.empty_cache()
+            plot_durations(show_result=True)
             game.restart()
             time.sleep(3)
-            # plot_durations()
             break
         if jump_dead_step:
             time.sleep(1)

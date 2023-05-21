@@ -12,15 +12,17 @@ class GameWrapper:
         self.controller = GameController()
         self.action = UP
 
-    def starz(self):
+    def start(self):
         self.controller.startGame()
     def restart(self):
             self.controller.restartGame()
     def step(self, action):
         data = self.controller.perform_action(action)
         return (data[0], data[1], data[2], data[3])
-
-
+    def pacman_position(self):
+        return self.controller.pacman.position
+    def update(self):
+        self.controller.update()
     def process_image(self, obs):
         # image = cv2.cvtColor(obs, cv2.COLOR_BGR2GRAY)
         # image = cv2.resize(image, (210, 160))
@@ -30,6 +32,7 @@ class GameWrapper:
 
 if __name__ == "__main__":
     controller = GameWrapper()
-    controller.reset()
+    controller.start()
     while True:
         state = controller.step(UP)
+        print(controller.pacman_position())
