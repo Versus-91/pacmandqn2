@@ -80,6 +80,7 @@ class GameController(object):
         self.nodes.denyHomeAccessList(self.ghosts)
         self.ghosts.inky.startNode.denyAccess(RIGHT, self.ghosts.inky)
         self.ghosts.clyde.startNode.denyAccess(LEFT, self.ghosts.clyde)
+        self.ghosts.pinky.startNode.denyAccess(RIGHT, self.ghosts.pinky)
         self.mazedata.obj.denyGhostsAccess(self.ghosts, self.nodes)
 
     def get_sate(self):
@@ -91,44 +92,48 @@ class GameController(object):
             for line in f:
                 raw_maze_data.append(line.split())
         maze_data = np.array(raw_maze_data)
-        for idx, values in enumerate(maze_data):
+        pellets = np.zeros(maze_data.shape)
+        ghosts = np.zeros(maze_data.shape)
+        powerpellets = np.zeros(maze_data.shape)
+        walls = np.zeros(maze_data.shape)
+
+        for idx, values in enumerate(walls):
             for id, value in enumerate(values):
                 if value == '.' or value == 'p' or value == '+':
-                    maze_data[idx][id] = 1
+                    walls[idx][id] = 1
                 else:
-                    maze_data[idx][id] = 0
+                    walls[idx][id] = 0
         for idx, values in enumerate(self.pellets.pelletList):
             x = int(values.position.x / 16)
             y = int(values.position.y / 16)
-            # pellets_position.append((x, y))
-            maze_data[y][x] = 2
+            pellets[y][x] = 2
         for idx, values in enumerate(self.pellets.powerpellets):
             x = int(values.position.x / 16)
             y = int(values.position.y / 16)
-            maze_data[y][x] = 3
+            powerpellets[y][x] = 3
         x = int(self.pacman.position.x / 16)
         y = int(self.pacman.position.y / 16)
-        maze_data[y][x] = 4
+        ghosts[y][x] = 4
         x = int(self.ghosts.blinky.position.x / 16)
         y = int(self.ghosts.blinky.position.y / 16)
-        maze_data[y][x] = 5
+        ghosts[y][x] = 4
 
         x = int(self.ghosts.inky.position.x / 16)
         y = int(self.ghosts.inky.position.y / 16)
-        maze_data[y][x] = 5
+        ghosts[y][x] = 4
         x = int(self.ghosts.pinky.position.x / 16)
         y = int(self.ghosts.pinky.position.y / 16)
-        maze_data[y][x] = 5
+        ghosts[y][x] = 4
 
         x = int(self.ghosts.clyde.position.x / 16)
         y = int(self.ghosts.clyde.position.y / 16)
-        maze_data[y][x] = 5
-        maze_data = maze_data.astype(dtype=np.float32)
+        ghosts[y][x] = 4
+
         # state.append(maze_data)
         # state.append(ghosts_position)
         # state.append(self.pacman.direction)
         # state.append(pellets_position)
-        return maze_data
+        return [walls, pellets, powerpellets, ghosts]
 
     def startGame_old(self):
         self.mazedata.loadMaze(self.level)
@@ -196,7 +201,7 @@ class GameController(object):
         self.render()
 
     def perform_action(self, action):
-        dt = self.clock.tick(60) / 1000.0
+        dt = self.clock.tick(30) / 1000.0
         self.textgroup.update(dt)
         self.pellets.update(dt)
         if not self.pause.paused:
@@ -253,11 +258,11 @@ class GameController(object):
         if pellet:
             self.pellets.numEaten += 1
             self.updateScore(pellet.points)
-            if self.pellets.numEaten == 30:
-                self.ghosts.inky.startNode.allowAccess(RIGHT, self.ghosts.inky)
-            if self.pellets.numEaten == 70:
-                self.ghosts.clyde.startNode.allowAccess(
-                    LEFT, self.ghosts.clyde)
+            # if self.pellets.numEaten == 30:
+            #     self.ghosts.inky.startNode.allowAccess(RIGHT, self.ghosts.inky)
+            # if self.pellets.numEaten == 70:
+            #     self.ghosts.clyde.startNode.allowAccess(
+            #         LEFT, self.ghosts.clyde)
             self.pellets.pelletList.remove(pellet)
             if pellet.name == POWERPELLET:
                 self.ghosts.startFreight()
@@ -357,7 +362,7 @@ class GameController(object):
 
     def render(self):
         self.screen.blit(self.background, (0, 0))
-        #self.nodes.render(self.screen)
+        # self.nodes.render(self.screen)
         self.pellets.render(self.screen)
         if self.fruit is not None:
             self.fruit.render(self.screen)
