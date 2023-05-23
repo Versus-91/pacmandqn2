@@ -63,6 +63,7 @@ class GameController(object):
         self.pacman = Pacman(self.nodes.getNodeFromTiles(
             *self.mazedata.obj.pacmanStart))
         self.pellets = PelletGroup(self.mazedata.obj.name+".txt")
+        self.eatenPellets = []
         self.ghosts = GhostGroup(self.nodes.getStartTempNode(), self.pacman)
 
         self.ghosts.pinky.setStartNode(
@@ -84,10 +85,7 @@ class GameController(object):
         self.mazedata.obj.denyGhostsAccess(self.ghosts, self.nodes)
 
     def get_sate(self):
-        state = []
-        ghosts_position = []
         raw_maze_data = []
-        pellets_position = []
         with open('maze1.txt', 'r') as f:
             for line in f:
                 raw_maze_data.append(line.split())
@@ -96,43 +94,54 @@ class GameController(object):
         ghosts = np.zeros(maze_data.shape)
         powerpellets = np.zeros(maze_data.shape)
         walls = np.zeros(maze_data.shape)
-
-        for idx, values in enumerate(walls):
+        for idx, values in enumerate(maze_data):
             for id, value in enumerate(values):
-                if value == '.' or value == 'p' or value == '+':
-                    walls[idx][id] = 1
-                else:
+                # if value == '.' or value == 'p' or value == '+':
+                    #pallets.push((idx, id))
+                if value == 'X':
                     walls[idx][id] = 0
+                if value in ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0']:
+                    walls[idx][id] = 1
+                if value == 'n' or value == '|' or value == '-':
+                    walls[idx][id] = 2
+        for idx, values in enumerate(self.eatenPellets):
+            x = int(values.position.x / 16)
+            y = int(values.position.y / 16)
+            walls[y][x] = 2
         for idx, values in enumerate(self.pellets.pelletList):
             x = int(values.position.x / 16)
             y = int(values.position.y / 16)
-            pellets[y][x] = 2
+            walls[y][x] = 5
         for idx, values in enumerate(self.pellets.powerpellets):
             x = int(values.position.x / 16)
             y = int(values.position.y / 16)
-            powerpellets[y][x] = 3
-        x = int(self.pacman.position.x / 16)
-        y = int(self.pacman.position.y / 16)
-        ghosts[y][x] = 4
+            walls[y][x] = 4
+
+        # x = int(self.pacman.position.x / 16)
+        # y = int(self.pacman.position.y / 16)
+        # walls[y][x] = 4
         x = int(self.ghosts.blinky.position.x / 16)
         y = int(self.ghosts.blinky.position.y / 16)
-        ghosts[y][x] = 4
+        walls[y][x] = 3
 
         x = int(self.ghosts.inky.position.x / 16)
         y = int(self.ghosts.inky.position.y / 16)
-        ghosts[y][x] = 4
+        walls[y][x] = 3
         x = int(self.ghosts.pinky.position.x / 16)
         y = int(self.ghosts.pinky.position.y / 16)
-        ghosts[y][x] = 4
+        walls[y][x] = 3
 
         x = int(self.ghosts.clyde.position.x / 16)
         y = int(self.ghosts.clyde.position.y / 16)
-        ghosts[y][x] = 4
+        walls[y][x] = 3
 
         # state.append(maze_data)
         # state.append(ghosts_position)
         # state.append(self.pacman.direction)
         # state.append(pellets_position)
+        num_rows, num_cols = walls.shape
+        walls = np.delete(walls, (0, 1, 2, num_rows-1,
+                          num_rows-3, num_rows-2, num_rows-4, num_rows-5, num_rows-6, num_rows-7, num_rows-8), axis=0)
         return [walls, pellets, powerpellets, ghosts]
 
     def startGame_old(self):
@@ -199,6 +208,7 @@ class GameController(object):
             afterPauseMethod()
         self.checkEvents()
         self.render()
+        self.get_sate()
 
     def perform_action(self, action):
         dt = self.clock.tick(30) / 1000.0
@@ -256,6 +266,7 @@ class GameController(object):
     def checkPelletEvents(self):
         pellet = self.pacman.eatPellets(self.pellets.pelletList)
         if pellet:
+            self.eatenPellets.append(pellet)
             self.pellets.numEaten += 1
             self.updateScore(pellet.points)
             # if self.pellets.numEaten == 30:

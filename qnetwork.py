@@ -63,32 +63,6 @@ TARGET_UPDATE = 8_000  # here
 input_shape = 36 * 28
 
 
-def preprocess_observation(obs):
-    # Crop and resize the image
-    obs = np.flipud(obs).transpose((1, 0, 2))
-    res = cv2.resize(obs, dsize=(200, 200), interpolation=cv2.INTER_CUBIC)
-    crop_img = res[15:190, 0:200]
-    # Convert the image to greyscale
-    # crop_img = crop_img.mean(axis=2)
-    # Improve image contrast
-    # crop_img[crop_img == color] = 0
-    res = cv2.resize(crop_img, dsize=(84, 84), interpolation=cv2.INTER_CUBIC)
-    res = cv2.cvtColor(res, cv2.COLOR_BGR2GRAY)
-    res = cv2.merge((res))
-    res = np.transpose(res, (2, 0, 1))
-    # plt.imshow(res)
-    img = np.transpose(res, (2, 0, 1)).astype(np.float32) / 255.0
-    img = torch.from_numpy(img).to(device)
-    return img.unsqueeze(0)
-    # Add batch dimension
-    img = img.unsqueeze(0)
-    print(img.shape)
-    screen = torch.from_numpy(res).to(device)
-    return img.to(device)
-    # return screen
-    return torch.from_numpy(res).unsqueeze(0).unsqueeze(0).to(device)
-
-
 class DQN(nn.Module):
     def __init__(self, input_shape, num_actions):
         super(DQN, self).__init__()
@@ -227,6 +201,7 @@ def plot_durations(show_result=False):
     plt.pause(0.001)  # pause a bit so that plots are updated
     plt.savefig('plot.png')
 
+
 recod_score = 0
 obs = game.start()
 # Main loop
@@ -291,7 +266,8 @@ while True:
         old_action = action_t
         # if reward != 0:
         #     dmaker.old_action = action.item()
-        next_state = torch.from_numpy(obs[0].astype(dtype=np.float32)).to(device)
+        next_state = torch.from_numpy(
+            obs[0].astype(dtype=np.float32)).to(device)
         next_state = next_state.view(1, -1)
         if got_reward:
             reward_sum += reward
@@ -319,8 +295,8 @@ while True:
         # display.stream(update_all)
         if done:
             if reward_sum > recod_score:
-               recod_score = reward_sum
-               print("recod_score", recod_score)
+                recod_score = reward_sum
+                print("recod_score", recod_score)
                 # torch.save(policy_DQN.state_dict(), PATH_MODELS /f"policy-model-{episodes}.pt")
                 # torch.save(target_DQN.state_dict(), PATH_MODELS /
                 #    f"target-model-{episodes}.pt")
