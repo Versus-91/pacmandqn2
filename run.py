@@ -15,6 +15,15 @@ from sprites import LifeSprites
 from sprites import MazeSprites
 from mazedata import MazeData
 
+game_states = {
+    'pallet': 1,
+    'powerpallet': 0.9,
+    'ghost': 0.5,
+    'wall': 0.1,
+    'path': 0.2,
+    'empty': 0
+}
+
 
 class GameController(object):
     def __init__(self):
@@ -97,24 +106,25 @@ class GameController(object):
         for idx, values in enumerate(maze_data):
             for id, value in enumerate(values):
                 # if value == '.' or value == 'p' or value == '+':
-                    #pallets.push((idx, id))
+                # pallets.push((idx, id))
                 if value == 'X':
-                    walls[idx][id] = 0
+                    walls[idx][id] = game_states.get('empty')
                 if value in ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0']:
-                    walls[idx][id] = 1
+                    walls[idx][id] = game_states.get('wall')
                 if value == 'n' or value == '|' or value == '-':
-                    walls[idx][id] = 2
+                    walls[idx][id] = game_states.get('path')
         for idx, values in enumerate(self.eatenPellets):
             x = int(values.position.x / 16)
             y = int(values.position.y / 16)
-            walls[y][x] = 2
+            walls[y][x] = game_states.get('path')
         for idx, values in enumerate(self.pellets.pelletList):
             x = int(values.position.x / 16)
             y = int(values.position.y / 16)
-            walls[y][x] = 5
+            walls[y][x] = game_states.get('pallet')
         for idx, values in enumerate(self.pellets.powerpellets):
             x = int(values.position.x / 16)
             y = int(values.position.y / 16)
+            game_states.get('powerpallet')
             walls[y][x] = 4
 
         # x = int(self.pacman.position.x / 16)
@@ -122,25 +132,25 @@ class GameController(object):
         # walls[y][x] = 4
         x = int(self.ghosts.blinky.position.x / 16)
         y = int(self.ghosts.blinky.position.y / 16)
-        walls[y][x] = 3
+        walls[y][x] = game_states.get('ghost')
 
         x = int(self.ghosts.inky.position.x / 16)
         y = int(self.ghosts.inky.position.y / 16)
-        walls[y][x] = 3
+        walls[y][x] = game_states.get('ghost')
         x = int(self.ghosts.pinky.position.x / 16)
         y = int(self.ghosts.pinky.position.y / 16)
-        walls[y][x] = 3
+        walls[y][x] = game_states.get('ghost')
 
         x = int(self.ghosts.clyde.position.x / 16)
         y = int(self.ghosts.clyde.position.y / 16)
-        walls[y][x] = 3
+        walls[y][x] = game_states.get('ghost')
 
         # state.append(maze_data)
         # state.append(ghosts_position)
         # state.append(self.pacman.direction)
         # state.append(pellets_position)
         num_rows, num_cols = walls.shape
-        walls = np.delete(walls, (0, 1, 2, num_rows-1,
+        walls = np.delete(walls, (0, 1, 2, 3, 4, 5, 6, num_rows-1,
                           num_rows-3, num_rows-2, num_rows-4, num_rows-5, num_rows-6, num_rows-7, num_rows-8), axis=0)
         return [walls, pellets, powerpellets, ghosts]
 
