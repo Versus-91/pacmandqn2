@@ -18,7 +18,9 @@ from mazedata import MazeData
 game_states = {
     'pallet': 1,
     'powerpallet': 0.9,
+    'ghost_fright': 0.6,
     'ghost': 0.5,
+    'pacman': 0.4,
     'wall': 0.1,
     'path': 0.2,
     'empty': 0
@@ -122,36 +124,45 @@ class GameController(object):
             y = int(values.position.y / 16)
             walls[y][x] = game_states.get('pallet')
         for idx, values in enumerate(self.pellets.powerpellets):
-            x = int(values.position.x / 16)
-            y = int(values.position.y / 16)
-            walls[y][x] = game_states.get('powerpallet')
+            pellets[y][x] = game_states.get('powerpallet')
 
-        # x = int(self.pacman.position.x / 16)
-        # y = int(self.pacman.position.y / 16)
-        # walls[y][x] = 4
+        x = int(self.pacman.position.x / 16)
+        y = int(self.pacman.position.y / 16)
+        walls[y][x] = game_states.get('pacman')
         x = int(self.ghosts.blinky.position.x / 16)
         y = int(self.ghosts.blinky.position.y / 16)
-        walls[y][x] = game_states.get('ghost')
+        if self.ghosts.blinky.mode.current is not FREIGHT:
+            walls[y][x] = game_states.get('ghost')
+        else:
+            walls[y][x] = game_states.get('ghost_fright')
 
         x = int(self.ghosts.inky.position.x / 16)
         y = int(self.ghosts.inky.position.y / 16)
-        walls[y][x] = game_states.get('ghost')
+        if self.ghosts.inky.mode.current is not FREIGHT:
+            walls[y][x] = game_states.get('ghost')
+        else:
+            walls[y][x] = game_states.get('ghost_fright')
         x = int(self.ghosts.pinky.position.x / 16)
         y = int(self.ghosts.pinky.position.y / 16)
-        walls[y][x] = game_states.get('ghost')
-
+        if self.ghosts.pinky.mode.current is not FREIGHT:
+            walls[y][x] = game_states.get('ghost')
+        else:
+            walls[y][x] = game_states.get('ghost_fright')
         x = int(self.ghosts.clyde.position.x / 16)
         y = int(self.ghosts.clyde.position.y / 16)
-        walls[y][x] = game_states.get('ghost')
+        if self.ghosts.clyde.mode.current is not FREIGHT:
+            walls[y][x] = game_states.get('ghost')
+        else:
+            walls[y][x] = game_states.get('ghost_fright')
 
         # state.append(maze_data)
         # state.append(ghosts_position)
         # state.append(self.pacman.direction)
         # state.append(pellets_position)
-        num_rows, num_cols = walls.shape
-        walls = np.delete(walls, (0, 1, 2, 3, 4, 5, 6, num_rows-1,
-                          num_rows-3, num_rows-2, num_rows-4, num_rows-5, num_rows-6, num_rows-7, num_rows-8), axis=0)
-        return [walls.flatten(), pellets, powerpellets, ghosts]
+        walls = walls[7:29, 5:23]
+        pellets = pellets[7:29, 5:23]
+        ghosts = ghosts[7:29, 5:23]
+        return [walls, pellets, ghosts]
 
     def startGame_old(self):
         self.mazedata.loadMaze(self.level)
@@ -252,7 +263,7 @@ class GameController(object):
         self.render()
 
         surface_array = pygame.surfarray.array3d(pygame.display.get_surface())
-        return (surface_array, self.score, self.lives == 0 or (self.pellets.isEmpty()), self.lives)
+        return (self.get_sate(), self.score, self.lives == 0 or (self.pellets.isEmpty()), self.lives)
 
     def checkEvents(self):
         for event in pygame.event.get():
