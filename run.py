@@ -124,8 +124,7 @@ class GameController(object):
         for idx, values in enumerate(self.pellets.powerpellets):
             x = int(values.position.x / 16)
             y = int(values.position.y / 16)
-            game_states.get('powerpallet')
-            walls[y][x] = 4
+            walls[y][x] = game_states.get('powerpallet')
 
         # x = int(self.pacman.position.x / 16)
         # y = int(self.pacman.position.y / 16)
@@ -152,7 +151,7 @@ class GameController(object):
         num_rows, num_cols = walls.shape
         walls = np.delete(walls, (0, 1, 2, 3, 4, 5, 6, num_rows-1,
                           num_rows-3, num_rows-2, num_rows-4, num_rows-5, num_rows-6, num_rows-7, num_rows-8), axis=0)
-        return [walls, pellets, powerpellets, ghosts]
+        return [walls.flatten(), pellets, powerpellets, ghosts]
 
     def startGame_old(self):
         self.mazedata.loadMaze(self.level)
@@ -221,7 +220,7 @@ class GameController(object):
         self.get_sate()
 
     def perform_action(self, action):
-        dt = self.clock.tick(30) / 1000.0
+        dt = self.clock.tick(60) / 1000.0
         self.textgroup.update(dt)
         self.pellets.update(dt)
         if not self.pause.paused:

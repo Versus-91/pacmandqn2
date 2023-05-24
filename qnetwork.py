@@ -60,7 +60,6 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 learn_counter = 0
 N_ACTIONS = 4
 TARGET_UPDATE = 8_000  # here
-input_shape = 36 * 28
 
 
 class DQN(nn.Module):
@@ -118,8 +117,8 @@ def optimize_model(policy_DQN, target_DQN, memory, optimizer, learn_counter, dev
     return learn_counter
 
 
-policy_DQN = DQN(input_shape, N_ACTIONS).to(device)
-target_DQN = DQN(input_shape, N_ACTIONS).to(device)
+policy_DQN = DQN(588, N_ACTIONS).to(device)
+target_DQN = DQN(588, N_ACTIONS).to(device)
 optimizer = optim.SGD(
     policy_DQN.parameters(), lr=LR, momentum=MOMENTUM, nesterov=True
 )
@@ -132,12 +131,11 @@ def transform_reward(reward):
     return log(reward, 1000) if reward > 0 else reward
 
 
-def select_action(state, policy_DQN, learn_counter):
+def select_action(state, policy_DQN):
     global steps_done
     global old_action
     sample = random.random()
-    eps_threshold = max(EPS_MIN, EPS_MAX - (EPS_MAX - EPS_MIN)
-                        * learn_counter / EPS_DECAY)
+    eps_threshold = max(EPS_MIN, EPS_MAX - (EPS_MAX - EPS_MIN) / EPS_DECAY)
     steps_done += 1
     with torch.no_grad():
         q_values = policy_DQN(state)
@@ -192,7 +190,7 @@ REWARDS = {
 }
 
 
-def plot_durations(show_result=False):
+def plot_durations():
     plt.figure()
     plt.plot(np.arange(len(episode_durations)), episode_durations)
     plt.xlabel('Episode')
