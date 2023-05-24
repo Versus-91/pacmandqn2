@@ -16,7 +16,7 @@ from game import GameWrapper
 import random
 import matplotlib
 from time import sleep
-matplotlib.use('Agg')
+# matplotlib.use('Agg')
 K_FRAME = 2
 def optimization(it, r): return it % K_FRAME == 0 and r
 
@@ -190,6 +190,30 @@ REWARDS = {
 }
 
 
+def plot_images(images, rows, cols):
+    """
+    Display a list of images in a grid using Matplotlib.
+
+    Args:
+        images (list): List of images to be displayed.
+        rows (int): Number of rows in the grid.
+        cols (int): Number of columns in the grid.
+    """
+    fig, axes = plt.subplots(rows, cols, figsize=(cols*2, rows*2))
+
+    for i, ax in enumerate(axes.flat):
+        # Check if there are more images than available grid cells
+        if i < len(images):
+            ax.imshow(images[i])
+            ax.axis('off')
+        else:
+            # Hide empty subplots
+            ax.axis('off')
+
+    plt.tight_layout()
+    plt.show()
+
+
 def plot_durations():
     plt.figure()
     plt.plot(np.arange(len(episode_durations)), episode_durations)
@@ -204,119 +228,134 @@ recod_score = 0
 obs = game.start()
 # Main loop
 frame = 0
+
+
+def process_image(observation):
+    smaller_img = observation[70:380:2, 95:450:2]
+    gray_img = cv2.cvtColor(smaller_img, cv2.COLOR_RGB2GRAY)
+    resized = cv2.resize(gray_img, (32, 32), interpolation=cv2.INTER_LINEAR)
+    return resized.transpose(1, 0)
+
+
+def crop_center(img, cropx, cropy):
+    y, x, _ = img.shape
+    startx = x//2-(cropx//2)
+    starty = y//2-(cropy//2)
+    return img[starty:starty+cropy, startx:startx+cropx]
+
+
 while True:
-    # if dmaker.steps_done > MAX_FRAMES:
-    #     break
+    # Set the desired frame rate
+    # Set the desired action interval
+    action_interval = 0.016  # 1 second
     start_time = time.time()
+    frames = []
     episodes += 1
     lives = 3
     jump_dead_step = False
     obs, reward, done, info = game.step(RIGHT)
     state = torch.from_numpy(obs[0].astype(dtype=np.float32)).to(device)
+    smaller_img = obs[70:380:2, 95:450:2]
+    frames.append(smaller_img.transpose(1, 0, 2))
     got_reward = False
+    skipped_frames = 0
     old_action = 3
     reward_sum = 0
+    last_score = 0
     while True:
         current_time = time.time()
-        if not current_time - start_time >= 0.1:
-            continue
-        start_time = time.time()
-        # if dmaker.steps_done > MAX_FRAMES:
-        #     break
-        # epsilon greedy decision maker
-        # actions = [0, 1, 2, 3]
-        # predicted_targets = policy_DQN(state).gather(1, torch.tensor([actions], dtype=torch.long).to(device))
-        # target_values = target_DQN(state).detach().max(1)[0]
-        state = state.view(1, -1)
-        action = select_action(
-            state, policy_DQN, learn_counter)
-        # action_ = ACTIONS[old_action][action.item()],
-        action_t = action.item()
-        if action_t == 0:
-            action = UP
-        elif action_t == 1:
-            action = DOWN
-        elif action_t == 2:
-            action = LEFT
-        elif action_t == 3:
-            action = RIGHT
+        elapsed_time = current_time - start_time
+        if elapsed_time >= action_interval:
+            obs, reward, done, info = game.step(
+                random.choice([UP, DOWN, LEFT, RIGHT]))
+            if last_score < reward:
+                reward_sum += reward - last_score
+            last_score = reward
+            image = process_image(obs)
+            frames.append(image)
+            if len(frames) % 16 == 0:
+                plot_images(frames, rows=4, cols=4)
+            start_time = time.time()
+            print("action", skipped_frames)
+            skipped_frames = 0
         else:
-            print("ERROR")
-        obs, reward_, done, remaining_lives = game.step(action)
-        reward = transform_reward(reward_)
-        update_all = False
-        if remaining_lives < lives:
-            lives -= 1
-            jump_dead_step = True
-            got_reward = False
-            reward += REWARDS["lose"]
-            # dmaker.old_action = 3
-            update_all = True
-
-        if done and lives > 0:
-            reward += REWARDS["win"]
-
-        got_reward = got_reward or reward != 0
-        # display.data.rewards.append(reward)
-        # display.data.rewards.append(reward)
-        # reward = torch.tensor([reward], device=device)
-
-        old_action = action_t
-        # if reward != 0:
-        #     dmaker.old_action = action.item()
-        next_state = torch.from_numpy(
-            obs[0].astype(dtype=np.float32)).to(device)
-        next_state = next_state.view(1, -1)
-        if got_reward:
-            reward_sum += reward
-            reward = torch.tensor([reward], device=device)
-            action_tensor = torch.tensor(
-                [[action_t]], device=device, dtype=torch.long)
-            memory.append(state, action_tensor,
-                          reward, next_state, done)
-
-        state = next_state
-        if got_reward and steps_done % 2 == 0:
-            optimize_model(
-                policy_DQN,
-                target_DQN,
-                memory,
-                optimizer,
-                learn_counter,
-                device
-            )
-        # predicted_targets = policy_DQN(
-        #     state_batch[0])
-
-        if steps_done % TARGET_UPDATE == 0:
-            target_DQN.load_state_dict(policy_DQN.state_dict())
-        # display.stream(update_all)
+            skipped_frames += 1
+            print("no action", skipped_frames)
         if done:
-            if reward_sum > recod_score:
-                recod_score = reward_sum
-                print("recod_score", recod_score)
-                # torch.save(policy_DQN.state_dict(), PATH_MODELS /f"policy-model-{episodes}.pt")
-                # torch.save(target_DQN.state_dict(), PATH_MODELS /
-                #    f"target-model-{episodes}.pt")
-            # display.data.successes += remaining_lives > 0
-            episode_durations.append(reward_sum)
-            torch.cuda.empty_cache()
-            plot_durations(show_result=True)
+            assert reward_sum == reward
             game.restart()
             time.sleep(3)
-            break
-        if jump_dead_step:
-            time.sleep(1)
-            jump_dead_step = False
-        torch.cuda.empty_cache()
+            reward_sum = 0
+        # obs, reward, done, info = game.step(random.choice([UP, DOWN, LEFT, RIGHT]))
+        # frames.append(obs.transpose(1, 0, 2))
+        # if len(frames) % 16 == 0:
+        #     plot_images(frames, rows=4, cols=4)
+        # current_time = time.time()
+        # if not current_time - start_time >= 0.08:
+        #     continue
+        # start_time = time.time()
+        # action = select_action(state, policy_DQN)
+        # action_t = action.item()
+        # if action_t == 0:
+        #     action = UP
+        # elif action_t == 1:
+        #     action = DOWN
+        # elif action_t == 2:
+        #     action = LEFT
+        # elif action_t == 3:
+        #     action = RIGHT
+        # else:
+        #     print("ERROR")
+        # obs, reward_, done, remaining_lives = game.step(action)
+        # reward = transform_reward(reward_)
+        # update_all = False
+        # if remaining_lives < lives:
+        #     lives -= 1
+        #     jump_dead_step = True
+        #     got_reward = False
+        #     reward += REWARDS["lose"]
+        #     update_all = True
 
-    # if episodes % 1000 == 0:
-    #     # torch.save(policy_DQN.state_dict(), PATH_MODELS /
-    #     #            f"policy-model-{episodes}.pt")
-    #     # torch.save(target_DQN.state_dict(), PATH_MODELS /
-    #     #            f"target-model-{episodes}.pt")
-    #     display.save()
-    # display.data.round()
-    # torch.save(policy_DQN.state_dict(), PATH_MODELS / f"policy-model-final.pt")
-    # torch.save(target_DQN.state_dict(), PATH_MODELS / f"target-model-final.pt")
-    # print("Complete")
+        # if done and lives > 0:
+        #     reward += REWARDS["win"]
+
+        # got_reward = got_reward or reward != 0
+
+        # old_action = action_t
+        # next_state = torch.from_numpy(
+        #     obs[0].astype(dtype=np.float32)).to(device)
+        # next_state = next_state.view(1, -1)
+        # if got_reward:
+        #     reward_sum += reward_
+        #     reward = torch.tensor([reward], device=device)
+        #     action_tensor = torch.tensor(
+        #         [[action_t]], device=device, dtype=torch.long)
+        #     memory.append(state, action_tensor,
+        #                   reward, next_state, done)
+
+        # state = next_state
+        # if got_reward and steps_done % 2 == 0:
+        #     optimize_model(
+        #         policy_DQN,
+        #         target_DQN,
+        #         memory,
+        #         optimizer,
+        #         learn_counter,
+        #         device
+        #     )
+
+        # if steps_done % TARGET_UPDATE == 0:
+        #     target_DQN.load_state_dict(policy_DQN.state_dict())
+        # if done:
+        #     if reward_sum > recod_score:
+        #         recod_score = reward_sum
+        #         print("recod_score", recod_score)
+        #     episode_durations.append(reward_sum)
+        #     torch.cuda.empty_cache()
+        #     plot_durations()
+        #     game.restart()
+        #     time.sleep(3)
+        #     break
+        # if jump_dead_step:
+        #     time.sleep(1)
+        #     jump_dead_step = False

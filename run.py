@@ -250,11 +250,9 @@ class GameController(object):
             afterPauseMethod()
         self.checkEvents()
         self.render()
-        reward = 0
-        if self.last_score != self.score:
-            reward = self.score - self.last_score
-        self.last_score = self.score
-        return (self.get_sate(), reward, self.lives == 0 or (self.pellets.isEmpty()), self.lives)
+
+        surface_array = pygame.surfarray.array3d(pygame.display.get_surface())
+        return (surface_array, self.score, self.lives == 0 or (self.pellets.isEmpty()), self.lives)
 
     def checkEvents(self):
         for event in pygame.event.get():
@@ -370,6 +368,7 @@ class GameController(object):
         self.fruitCaptured = []
 
     def resetLevel(self):
+        self.last_score = 0
         self.pause.paused = False
         self.pacman.reset()
         self.ghosts.reset()
