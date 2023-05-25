@@ -1,5 +1,6 @@
 # create a dqn eperience replay buffer
 from math import log
+import math
 import os
 import torch.nn.functional as F
 import torch.optim as optim
@@ -17,7 +18,7 @@ from game import GameWrapper
 import random
 import matplotlib
 from time import sleep
-# matplotlib.use('Agg')
+matplotlib.use('Agg')
 K_FRAME = 2
 def optimization(it, r): return it % K_FRAME == 0 and r
 
@@ -54,12 +55,11 @@ DISCOUNT_RATE = 0.99
 EPS_MAX = 1.0
 EPS_MIN = 0.1
 EPS_DECAY = 1_000_000
-TARGET_UPDATE = 8_000  # here
+TARGET_UPDATE = 60  # here
 REPLAY_MEMORY_SIZE = 3 * 6000
 steps_done = 0
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 N_ACTIONS = 4
-TARGET_UPDATE = 8_000  # here
 
 
 class DQN(nn.Module):
@@ -83,9 +83,9 @@ def optimize_model(policy_DQN, target_DQN, memory, optimizer, device):
         return
     experiences = memory.sample(BATCH_SIZE)
     batch = Experience(*zip(*experiences))
-    state_batch = torch.stack(batch.state)
+    state_batch = torch.cat(batch.state)
     action_batch = torch.cat(batch.action)
-    new_state_batch = torch.stack(batch.new_state)
+    new_state_batch = torch.cat(batch.new_state)
     reward_batch = torch.cat(batch.reward)
     indices = random.sample(range(len(experiences)), k=BATCH_SIZE)
     def extract(list_): return [list_[i] for i in indices]
@@ -131,14 +131,16 @@ def select_action(state, policy_DQN):
     global steps_done
     global old_action
     sample = random.random()
-    eps_threshold = max(EPS_MIN, EPS_MAX - (EPS_MAX - EPS_MIN) / EPS_DECAY)
+    eps_threshold = EPS_END + (EPS_START - EPS_END) * \
+        math.exp(-1. * steps_done / EPS_DECAY)
     steps_done += 1
-    with torch.no_grad():
-        q_values = policy_DQN(state)
     # display.data.q_values.append(q_values.max(1)[0].item())
     if sample > eps_threshold:
+        with torch.no_grad():
+            q_values = policy_DQN(state)
         # Optimal action
-        return q_values.max(1)[1].view(1, 1)
+        vals = q_values.max(1)[1]
+        return vals.view(1, 1)
     else:
         # Random action
         action = random.randrange(N_ACTIONS)
@@ -168,7 +170,7 @@ class ExperienceReplay:
 
 memory = ExperienceReplay(18000)
 game = GameWrapper()
-episode_durations = []
+episode_rewards = []
 REWARDS = {
     "default": -0.2,
     200: 20,
@@ -205,12 +207,23 @@ def plot_images(images, rows, cols):
     plt.show()
 
 
-def plot_durations():
-    plt.figure()
-    plt.plot(np.arange(len(episode_durations)), episode_durations)
+def plot_rewards(show_result=False):
+    plt.figure(1)
+    durations_t = torch.tensor(episode_rewards, dtype=torch.float)
+    if show_result:
+        plt.title('Result')
+    else:
+        plt.clf()
+        plt.title('Training...')
     plt.xlabel('Episode')
-    plt.ylabel('Reward')
-    plt.title('Rewards over Time')
+    plt.ylabel('Duration')
+    plt.plot(durations_t.numpy())
+    # Take 100 episode averages and plot them too
+    if len(durations_t) >= 100:
+        means = durations_t.unfold(0, 100, 1).mean(1).view(-1)
+        means = torch.cat((torch.zeros(99), means))
+        plt.plot(means.numpy())
+
     plt.pause(0.001)  # pause a bit so that plots are updated
     plt.savefig('plot.png')
 
@@ -226,7 +239,7 @@ while True:
     jump_dead_step = False
     obs, reward, done, info = game.step(2)
     obs = obs[0].flatten().astype(dtype=np.float32)
-    state = torch.from_numpy(obs).to(device)
+    state = torch.from_numpy(obs).unsqueeze(0).to(device)
     got_reward = False
     reward_sum = 0
     last_score = 0
@@ -242,15 +255,15 @@ while True:
                 reward_ = 20
             if last_score < reward:
                 reward_sum += reward - last_score
-            if old_action is REVERSED[old_action]:
-                reward_ = -2
             old_action = action_t
             last_score = reward
             if remaining_lives < lives:
                 lives -= 1
                 reward_ = -10
-            obs = obs[0].flatten().astype(dtype=np.float32)
-            next_state = torch.from_numpy(obs).to(device)
+            if reward_ == last_score:
+                reward_ = -0.2
+            observation = obs[0].flatten().astype(dtype=np.float32)
+            next_state = torch.from_numpy(observation).unsqueeze(0).to(device)
             action_tensor = torch.tensor(
                 [[action_t]], device=device, dtype=torch.long)
             memory.append(state, action_tensor,
@@ -270,7 +283,8 @@ while True:
             start_time = time.time()
         if done:
             assert reward_sum == reward
-            print("reward sum", reward_sum)
+            episode_rewards.append(reward_sum)
+            plot_rewards()
             game.restart()
             time.sleep(3)
             reward_sum = 0
@@ -280,4 +294,4 @@ while True:
             torch.save(policy_DQN.state_dict(), os.path.join(
                 os.getcwd() + "\\results", f"policy-model-{episodes}.pt"))
             torch.save(target_DQN.state_dict(), os.path.join(
-                os.getcwd() + "\\results", f"policy-model-{episodes}.pt"))
+                os.getcwd() + "\\results", f"target-model-{episodes}.pt"))
