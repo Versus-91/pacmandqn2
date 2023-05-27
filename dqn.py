@@ -1,4 +1,3 @@
-# create a dqn eperience replay buffer
 from math import log
 import math
 import os
@@ -19,12 +18,14 @@ import random
 import matplotlib
 from time import sleep
 matplotlib.use('Agg')
+
+
 K_FRAME = 2
 def optimization(it, r): return it % K_FRAME == 0 and r
 
 
 REVERSED = {0: 1, 1: 0, 2: 3, 3: 2}
-isreversed = (
+is_reversed = (
     lambda last_action, action: "default" if REVERSED[action] -
     last_action else "reverse"
 )
@@ -50,11 +51,9 @@ LR = 2.5e-4
 MOMENTUM = 0.95
 
 # Reinforcement learning constants
-BATCH_SIZE = 128
 DISCOUNT_RATE = 0.99
 EPS_MAX = 1.0
 EPS_MIN = 0.1
-EPS_DECAY = 1_000_000
 TARGET_UPDATE = 60  # here
 REPLAY_MEMORY_SIZE = 3 * 6000
 steps_done = 0
