@@ -142,7 +142,7 @@ class MazeSprites(Spritesheet):
     def __init__(self, mazefile, rotfile):
         Spritesheet.__init__(self)
         self.data = self.readMazeFile(mazefile)
-        #self.rotdata = self.readMazeFile(rotfile)
+        self.rotdata = self.readMazeFile(rotfile)
 
     def getImage(self, x, y):
         return Spritesheet.getImage(self, x, y, TILEWIDTH, TILEHEIGHT)
@@ -156,8 +156,8 @@ class MazeSprites(Spritesheet):
                 if self.data[row][col].isdigit():
                     x = int(self.data[row][col]) + 12
                     sprite = self.getImage(x, y)
-                    #rotval = int(self.rotdata[row][col])
-                    #sprite = self.rotate(sprite, rotval)
+                    rotval = int(self.rotdata[row][col])
+                    sprite = self.rotate(sprite, rotval)
                     background.blit(sprite, (col*TILEWIDTH, row*TILEHEIGHT))
                 elif self.data[row][col] == '=':
                     sprite = self.getImage(10, 8)
