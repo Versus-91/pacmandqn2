@@ -37,7 +37,7 @@ class GameController(object):
         self.clock = pygame.time.Clock()
         self.fruit = None
         self.pause = Pause(False)
-        self.level = 1
+        self.level = 0
         self.lives = 3
         self.score = 0
         self.last_score = 0
@@ -95,7 +95,7 @@ class GameController(object):
         self.ghosts.pinky.startNode.denyAccess(RIGHT, self.ghosts.pinky)
         self.mazedata.obj.denyGhostsAccess(self.ghosts, self.nodes)
 
-    def get_sate(self):
+    def get_sate_old(self):
         raw_maze_data = []
         with open('maze1.txt', 'r') as f:
             for line in f:
@@ -231,6 +231,9 @@ class GameController(object):
         self.get_sate()
 
     def perform_action(self, action):
+        invalid_move = False
+        if not self.pacman.validDirection(action):
+            invalid_move = True
         dt = self.clock.tick(60) / 1000.0
         self.textgroup.update(dt)
         self.pellets.update(dt)
@@ -263,7 +266,7 @@ class GameController(object):
         self.render()
 
         surface_array = pygame.surfarray.array3d(pygame.display.get_surface())
-        return (self.get_sate(), self.score, self.lives == 0 or (self.pellets.isEmpty()), self.lives)
+        return (self.get_sate(), self.score, self.lives == 0 or (self.pellets.isEmpty()), self.lives, invalid_move)
 
     def checkEvents(self):
         for event in pygame.event.get():
@@ -280,6 +283,86 @@ class GameController(object):
                             self.textgroup.showText(PAUSETXT)
                             self.textgroup.hideText()
                             self.hideEntities()
+
+    def check_ghost_pos(seld, wall, x, y):
+        if (x >= 11 and x <= 16) and (y >= 15 and y <= 18):
+            return
+        # else:
+            # assert wall != game_states.get('wall'), f"{x} - {y} are in wall"
+
+    def get_sate(self):
+        raw_maze_data = []
+        with open('maze1.txt', 'r') as f:
+            for line in f:
+                raw_maze_data.append(line.split())
+        maze_data = np.array(raw_maze_data)
+        pellets = np.zeros(maze_data.shape)
+        ghosts = np.zeros(maze_data.shape)
+        frightened_ghosts = np.zeros(maze_data.shape)
+        pacman = np.zeros(maze_data.shape)
+        powerpellets = np.zeros(maze_data.shape)
+        walls = np.zeros(maze_data.shape)
+        for idx, values in enumerate(maze_data):
+            for id, value in enumerate(values):
+                # if value == '.' or value == 'p' or value == '+':
+                # pallets.push((idx, id))
+                if value in ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '=', 'X']:
+                    walls[idx][id] = game_states.get('wall')
+                if value == 'n' or value == '|' or value == '-' or value == '.' or value == 'p' or value == '+':
+                    walls[idx][id] = game_states.get('path')
+        for idx, values in enumerate(self.eatenPellets):
+            x = int(values.position.x / 16)
+            y = int(values.position.y / 16)
+            walls[y][x] = game_states.get('path')
+        for idx, values in enumerate(self.pellets.pelletList):
+            x = int(values.position.x / 16)
+            y = int(values.position.y / 16)
+            pellets[y][x] = game_states.get('pallet')
+        for idx, powepellet in enumerate(self.pellets.powerpellets):
+            x = int(powepellet.position.x / 16)
+            y = int(powepellet.position.y / 16)
+        x = int(round(self.pacman.position.x / 16))
+        y = int(round(self.pacman.position.y / 16))
+        pacman[y][x] = game_states.get('pacman')
+        assert walls[y][x] != game_states.get('wall')
+        x = int(round(self.ghosts.blinky.position.x / 16))
+        y = int(round(self.ghosts.blinky.position.y / 16))
+        self.check_ghost_pos(walls[y][x], x, y)
+        if self.ghosts.blinky.mode.current is not FREIGHT:
+            ghosts[y][x] = game_states.get('ghost')
+        else:
+            frightened_ghosts[y][x] = game_states.get('ghost_fright')
+
+        x = int(round(self.ghosts.inky.position.x / 16))
+        y = int(round(self.ghosts.inky.position.y / 16))
+        self.check_ghost_pos(walls[y][x], x, y)
+        if self.ghosts.inky.mode.current is not FREIGHT:
+            ghosts[y][x] = game_states.get('ghost')
+        else:
+            frightened_ghosts[y][x] = game_states.get('ghost_fright')
+
+        x = int(round(self.ghosts.pinky.position.x / 16))
+        y = int(round(self.ghosts.pinky.position.y / 16))
+        self.check_ghost_pos(walls[y][x], x, y)
+        if self.ghosts.pinky.mode.current is not FREIGHT:
+            ghosts[y][x] = game_states.get('ghost')
+        else:
+            frightened_ghosts[y][x] = game_states.get('ghost_fright')
+        x = int(round(self.ghosts.clyde.position.x / 16))
+        y = int(round(self.ghosts.clyde.position.y / 16))
+        self.check_ghost_pos(walls[y][x], x, y)
+        if self.ghosts.clyde.mode.current is not FREIGHT:
+            ghosts[y][x] = game_states.get('ghost')
+        else:
+            frightened_ghosts[y][x] = game_states.get('ghost_fright')
+        # state.append(maze_data)
+        # state.append(ghosts_position)
+        # state.append(self.pacman.direction)
+        # state.append(pellets_position)
+        # walls = walls[7:29, 5:23]
+        # pellets = pellets[7:29, 5:23]
+        # ghosts = ghosts[7:29, 5:23]
+        return [walls[7:29, 5:23], pacman[7:29, 5:23], pellets[7:29, 5:23], powerpellets[7:29, 5:23], ghosts[7:29, 5:23], frightened_ghosts[7:29, 5:23]]
 
     def checkPelletEvents(self):
         pellet = self.pacman.eatPellets(self.pellets.pelletList)
@@ -310,7 +393,7 @@ class GameController(object):
                     self.textgroup.addText(
                         str(ghost.points), WHITE, ghost.position.x, ghost.position.y, 8, time=1)
                     self.ghosts.updatePoints()
-                    self.pause.setPause(pauseTime=1, func=self.showEntities)
+                    self.pause.setPause(pauseTime=0.1, func=self.showEntities)
                     ghost.startSpawn()
                     self.nodes.allowHomeAccess(ghost)
                 elif ghost.mode.current is not SPAWN:
@@ -322,10 +405,10 @@ class GameController(object):
                         if self.lives <= 0:
                             self.textgroup.showText(GAMEOVERTXT)
                             self.pause.setPause(
-                                pauseTime=1, func=self.restartGame)
+                                pauseTime=0.1, func=self.restartGame)
                         else:
                             self.pause.setPause(
-                                pauseTime=1, func=self.resetLevel)
+                                pauseTime=0.1, func=self.resetLevel)
 
     def checkFruitEvents(self):
         if self.pellets.numEaten == 50 or self.pellets.numEaten == 140:
@@ -392,7 +475,7 @@ class GameController(object):
 
     def render(self):
         self.screen.blit(self.background, (0, 0))
-        #self.nodes.render(self.screen)
+        # self.nodes.render(self.screen)
         self.pellets.render(self.screen)
         if self.fruit is not None:
             self.fruit.render(self.screen)

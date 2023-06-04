@@ -14,8 +14,10 @@ class GameWrapper:
 
     def start(self):
         self.controller.startGame()
+
     def restart(self):
-            self.controller.restartGame()
+        self.controller.restartGame()
+
     def step(self, action):
         assert action >= 0 and action < 4
         if action == 0:
@@ -27,13 +29,16 @@ class GameWrapper:
         elif action == 3:
             action = RIGHT
         else:
-            print("Invalid action" ,action)
+            print("Invalid action", action)
         data = self.controller.perform_action(action)
-        return (data[0], data[1], data[2], data[3])
+        return (data[0], data[1], data[2], data[3], data[4])
+
     def pacman_position(self):
         return self.controller.pacman.position
+
     def update(self):
         self.controller.update()
+
     def process_image(self, obs):
         # image = cv2.cvtColor(obs, cv2.COLOR_BGR2GRAY)
         # image = cv2.resize(image, (210, 160))
