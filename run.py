@@ -36,6 +36,14 @@ direction_vals = {
 }
 
 
+class GameState:
+    def __init__(self):
+        self.lives = 0
+        self.invalid_move = False
+        self.total_pellets = 0
+        self.collected_pellets = 0
+
+
 class GameController(object):
     def __init__(self):
         pygame.init()
@@ -213,13 +221,13 @@ class GameController(object):
             afterPauseMethod()
         self.checkEvents()
         self.render()
-        state = self.get_state_vector()
+        state = self.get_frame()
         info = GameState()
         info.lives = self.lives
         info.invalid_move = invalid_move
         info.total_pellets = len(
             self.pellets.pelletList) + len(self.eatenPellets)
-        info.remaining_pellets = len(self.eatenPellets)
+        info.collected_pellets = len(self.eatenPellets)
         return (state, self.score, self.lives == 0 or (self.pellets.isEmpty()), info)
 
     def checkEvents(self):
@@ -317,10 +325,7 @@ class GameController(object):
         for idx, pellet in enumerate(self.eatenPellets):
             x = int(pellet.position.x / 16)
             y = int(pellet.position.y / 16)
-            if pellet.name == 1:
-                self.state[y][x] = 2
-            else:
-                self.state[y][x] = 2
+            self.state[y][x] = 2
         for idx, pellet in enumerate(self.pellets.pelletList):
             x = int(pellet.position.x / 16)
             y = int(pellet.position.y / 16)
@@ -335,20 +340,16 @@ class GameController(object):
         for ghost in enumerate(self.ghosts):
             x = int(round(ghost[1].position.x / 16))
             y = int(round(ghost[1].position.y / 16))
-            if ghost[1].mode.current is not FREIGHT:
+            if ghost[1].mode.current is not FREIGHT and ghost[1].mode.current is not SPAWN:
                 self.state[y][x] = -6
-            elif ghost[1].mode.current is FREIGHT:
+            else:
                 self.state[y][x] = 6
-        if (self.pacman_prev == Vector2(0, 0)):
-            self.pacman_prev = self.pacman.position
-        x = self.pacman.position.x
-        y = self.pacman.position.y
         # dist = math.sqrt((self.pacman_prev.x - x)**2 + (self.pacman_prev.y - x)**2)
         # if abs(self.pacman_prev.x - x) >= 16 or abs(self.pacman_prev.y - y) >= 16:
         #     self.pacman_prev = self.pacman.position
         #     print("move",self.pacman.position)
 
-        return self.state[7:28, :]
+        return self.state[7:28, 5:23]
 
     def find_pellet(self, pellet: Pellet) -> bool:
         for i, item in enumerate(self.pellets.pelletList):

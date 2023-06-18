@@ -31,7 +31,7 @@ class GameWrapper:
         else:
             print("Invalid action", action)
         data = self.controller.perform_action(action)
-        return (data[0], data[1], data[2], data[3], data[4])
+        return (data[0], data[1], data[2], data[3])
 
     def pacman_position(self):
         return self.controller.pacman.position
