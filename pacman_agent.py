@@ -173,8 +173,8 @@ class PacmanAgent:
         channel_matrix = channel_matrix.unsqueeze(0)
         return channel_matrix
 
-    def save_model(self, forced=False):
-        if (self.episode % SAVE_EPISODE_FREQ == 0 and self.episode != 0) or forced:
+    def save_model(self, force=False):
+        if (self.episode % SAVE_EPISODE_FREQ == 0 and self.episode != 0) or force:
             torch.save(
                 self.policy.state_dict(),
                 os.path.join(
@@ -227,7 +227,7 @@ class PacmanAgent:
         while True:
             action = self.act(state)
             action_t = action.item()
-            for i in range(2):
+            for i in range(3):
                 if not done:
                     obs, self.score, done, info = self.game.step(action_t)
                     if lives != info.lives or self.score - last_score != 0:
@@ -237,7 +237,7 @@ class PacmanAgent:
             self.buffer.append(obs)
             hit_ghost = False
             if lives != info.lives:
-                self.write_matrix(self.buffer)
+                # self.write_matrix(self.buffer)
                 hit_ghost = True
                 lives -= 1
             # next_state = torch.tensor(obs).float().to(device)
@@ -290,14 +290,14 @@ class PacmanAgent:
             obs = self.game.start()
             self.episode += 1
             random_action = random.choice([0, 1, 2, 3])
-            for i in range(4):
+            for i in range(6):
                 obs, self.score, done, info = self.game.step(random_action)
                 self.buffer.append(obs)
             state = self.process_state(self.buffer)
             while True:
                 action = self.act(state, eval=True)
                 action_t = action.item()
-                for i in range(2):
+                for i in range(3):
                     if not done:
                         obs, reward, done, _ = self.game.step(action_t)
                     else:
@@ -317,8 +317,8 @@ class PacmanAgent:
 
 if __name__ == "__main__":
     agent = PacmanAgent()
-    # agent.load_model(name="400-248363", eval=True)
+    agent.load_model(name="700-314695", eval=True)
     agent.rewards = []
     while True:
-        agent.train()
-        # agent.test()
+        # agent.train()
+        agent.test()
