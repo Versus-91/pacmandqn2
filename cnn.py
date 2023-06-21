@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 
 
+
 class Conv2dNetwork(nn.Module):
     def __init__(self):
         super(Conv2dNetwork, self).__init__()
