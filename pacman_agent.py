@@ -312,7 +312,7 @@ class PacmanAgent:
                     torch.cuda.empty_cache()
                     break
         else:
-            self.game.stop()
+            exit()
 
 
 if __name__ == "__main__":
