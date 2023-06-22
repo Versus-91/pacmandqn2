@@ -346,7 +346,7 @@ class GameController(object):
         #     self.pacman_prev = self.pacman.position
         #     print("move",self.pacman.position)
 
-        return self.state[7:28, 5:23]
+        return self.state[2:34, :]
 
     def find_pellet(self, pellet: Pellet) -> bool:
         for i, item in enumerate(self.pellets.pelletList):

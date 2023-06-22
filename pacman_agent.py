@@ -22,8 +22,7 @@ BATCH_SIZE = 128
 SAVE_EPISODE_FREQ = 100
 GAMMA = 0.99
 MOMENTUM = 0.95
-MEMORY_SIZE = 20000
-
+sync_every = 100
 Experience = namedtuple(
     "Experience", field_names=["state", "action", "reward", "done", "new_state"]
 )
@@ -55,7 +54,7 @@ class PacmanAgent:
         self.score = 0
         self.target = Conv2dNetwork().to(device)
         self.policy = Conv2dNetwork().to(device)
-        self.memory = ExperienceReplay(MEMORY_SIZE)
+        self.memory = ExperienceReplay(20000)
         self.game = GameWrapper()
         self.lr = 0.001
         self.last_action = 0
@@ -67,9 +66,9 @@ class PacmanAgent:
         self.episode = 0
         self.optimizer = optim.Adam(self.policy.parameters(), lr=self.lr)
         self.scheduler = lr_scheduler.ExponentialLR(self.optimizer, gamma=0.8)
-
+        self.losses = []
     def calculate_reward(
-        self, done, lives, hit_ghost, action, prev_score, info: GameState,state
+        self, done, lives, hit_ghost, action, prev_score, info: GameState, state
     ):
         reward = 0
         time_penalty = -0.01
@@ -92,7 +91,7 @@ class PacmanAgent:
         if self.score - prev_score >= 200:
             reward += 20 * ((self.score - prev_score) / 200)
         if info.invalid_move:
-             reward -= 1
+            reward -= 1
         if hit_ghost:
             reward -= 30
         reward += time_penalty
@@ -101,27 +100,27 @@ class PacmanAgent:
         if len(index[0]) != 0:
             x = index[0][0]
             y = index[1][0]
-            n1 = (state[x+1][y])
-            n2 = state[x-1][y]
-            n3= state[x][y+1]
-            n4 =(state[x][y-1])
-            if -6 in (n1,n2,n3,n4):
+            n1 = state[x + 1][y]
+            n2 = state[x - 1][y]
+            n3 = state[x][y + 1]
+            n4 = state[x][y - 1]
+            if -6 in (n1, n2, n3, n4):
                 reward -= 30
-            elif 3 in (n1,n2,n3,n4):
+            elif 3 in (n1, n2, n3, n4):
                 reward += 1 + progress
-            elif 4 in (n1,n2,n3,n4):
+            elif 4 in (n1, n2, n3, n4):
                 reward += 3 + progress
-        reward = round(reward,2)
+        reward = round(reward, 2)
         if reward != -0.11:
             print(reward)
         return reward
 
     def write_matrix(self, matrix):
-        with open('outfile.txt', 'wb') as f:
+        with open("outfile.txt", "wb") as f:
             for line in matrix:
-                np.savetxt(f, line, fmt='%.2f')
+                np.savetxt(f, line, fmt="%.2f")
 
-    def evaluate(self):
+    def learn(self):
         if len(self.memory) < BATCH_SIZE:
             return
         experiences = self.memory.sample(BATCH_SIZE)
@@ -134,16 +133,15 @@ class PacmanAgent:
         predicted_targets = self.policy(state_batch).gather(1, action_batch)
         target_values = self.target(new_state_batch).detach().max(1)[0]
         labels = reward_batch + GAMMA * (1 - dones) * target_values
-
         criterion = torch.nn.SmoothL1Loss()
-        loss = criterion(predicted_targets,
-                         labels.detach().unsqueeze(1)).to(device)
+        loss = criterion(predicted_targets, labels.detach().unsqueeze(1)).to(device)
+        self.losses.append(loss.item())
         self.optimizer.zero_grad()
         loss.backward()
         # for param in self.policy.parameters():
         #     param.grad.data.clamp_(-1, 1)
         self.optimizer.step()
-        if self.steps % 100 == 0:
+        if self.steps % sync_every == 0:
             self.target.load_state_dict(self.policy.state_dict())
 
     def act(self, state, eval=False):
@@ -154,8 +152,7 @@ class PacmanAgent:
             return vals.view(1, 1)
         rand = random.random()
         epsilon = max(
-            EPS_END, EPS_START - (EPS_START - EPS_END) *
-            (self.steps) / EPS_DECAY
+            EPS_END, EPS_START - (EPS_START - EPS_END) * (self.steps) / EPS_DECAY
         )
         self.steps += 1
         if rand > epsilon:
@@ -168,17 +165,16 @@ class PacmanAgent:
                 action = random.randrange(N_ACTIONS)
             return torch.tensor([[action]], device=device, dtype=torch.long)
 
-    def plot_rewards(self, name="plot.png", avg=100):
+    def plot_rewards(self,items, name="plot.png",label="rewards", avg=100):
         plt.figure(1)
-        durations_t = torch.tensor(self.rewards, dtype=torch.float)
+        rewards = torch.tensor(items, dtype=torch.float)
         plt.xlabel("Episode")
-        plt.ylabel("Rewards")
-        plt.plot(durations_t.numpy())
-        if len(durations_t) >= avg:
-            means = durations_t.unfold(0, avg, 1).mean(1).view(-1)
+        plt.ylabel(label)
+        plt.plot(rewards.numpy())
+        if len(rewards) >= avg:
+            means = rewards.unfold(0, avg, 1).mean(1).view(-1)
             means = torch.cat((torch.zeros(avg - 1), means))
             plt.plot(means.numpy())
-
         plt.pause(0.001)
         plt.savefig(name)
 
@@ -209,11 +205,9 @@ class PacmanAgent:
             )
 
     def load_model(self, name, eval=False):
-        path = os.path.join(os.getcwd() + "\\results",
-                            f"target-model-{name}.pt")
+        path = os.path.join(os.getcwd() + "\\results", f"target-model-{name}.pt")
         self.target.load_state_dict(torch.load(path))
-        path = os.path.join(os.getcwd() + "\\results",
-                            f"policy-model-{name}.pt")
+        path = os.path.join(os.getcwd() + "\\results", f"policy-model-{name}.pt")
         self.policy.load_state_dict(torch.load(path))
         if eval:
             self.target.eval()
@@ -259,50 +253,58 @@ class PacmanAgent:
                 # self.write_matrix(self.buffer)
                 hit_ghost = True
                 lives -= 1
+                if not done:
+                    for i in range(3):
+                        _, _, _, _ = self.game.step(action_t)
             # next_state = torch.tensor(obs).float().to(device)
             next_state = self.process_state(self.buffer)
 
             reward_ = self.calculate_reward(
-                done, lives, hit_ghost, action_t, last_score, info,obs
+                done, lives, hit_ghost, action_t, last_score, info, obs
             )
             reward_total += reward_
             last_score = self.score
-            action_tensor = torch.tensor(
-                [[action_t]], device=device, dtype=torch.long)
+            action_tensor = torch.tensor([[action_t]], device=device, dtype=torch.long)
             self.memory.append(
-                state, action_tensor, torch.tensor(
-                    [reward_], device=device), next_state, done
+                state,
+                action_tensor,
+                torch.tensor([reward_], device=device),
+                next_state,
+                done,
             )
             state = next_state
-            self.evaluate()
+            self.learn()
             self.last_action = action_t
             if self.steps % 100000 == 0:
                 self.scheduler.step()
             if done:
-                current_lr = self.optimizer.param_groups[0]["lr"]
-                epsilon = max(
-                    EPS_END,
-                    EPS_START - (EPS_START - EPS_END) *
-                    (self.steps) / EPS_DECAY,
-                )
-                print(
-                    "epsilon",
-                    round(epsilon, 3),
-                    "reward",
-                    self.score,
-                    "learning rate",
-                    current_lr,
-                    "episode",
-                    self.episode,
-                    "steps",
-                    self.steps
-                )
+                self.log()
                 self.rewards.append(self.score)
-                self.plot_rewards(avg=50)
+                self.plot_rewards(items= self.rewards, avg=50)
+                #self.plot_rewards(items = self.losses,label="losses",name="losses.png", avg=50)
                 time.sleep(1)
                 self.game.restart()
                 torch.cuda.empty_cache()
                 break
+
+    def log(self):
+        current_lr = self.optimizer.param_groups[0]["lr"]
+        epsilon = max(
+            EPS_END,
+            EPS_START - (EPS_START - EPS_END) * (self.steps) / EPS_DECAY,
+        )
+        print(
+            "epsilon",
+            round(epsilon, 3),
+            "reward",
+            self.score,
+            "learning rate",
+            current_lr,
+            "episode",
+            self.episode,
+            "steps",
+            self.steps,
+        )
 
     def test(self, episodes=10):
         if self.episode < episodes:
@@ -336,7 +338,8 @@ class PacmanAgent:
 
 if __name__ == "__main__":
     agent = PacmanAgent()
-    agent.load_model(name="100-39909", eval=False)
+    agent.load_model(name="800-389927", eval=False)
+
     agent.rewards = []
     while True:
         agent.train()
