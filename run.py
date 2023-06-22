@@ -309,23 +309,20 @@ class GameController(object):
         return False
 
     def get_frame(self):
-        if len(self.raw_maze_data) == 0:
-            raw_maze_data = []
-            with open('maze1.txt', 'r') as f:
-                for line in f:
-                    raw_maze_data.append(line.split())
-            self.raw_maze_data = np.array(raw_maze_data)
-            self.state = np.zeros(self.raw_maze_data.shape)
-            for idx, values in enumerate(self.raw_maze_data):
-                for id, value in enumerate(values):
-                    if value in ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '=', 'X']:
-                        self.state[idx][id] = 1
-                    elif value in ["-", "n", "|",]:
-                        self.state[idx][id] = 2
-        for idx, pellet in enumerate(self.eatenPellets):
-            x = int(pellet.position.x / 16)
-            y = int(pellet.position.y / 16)
-            self.state[y][x] = 2
+        raw_maze_data = []
+        with open('maze1.txt', 'r') as f:
+            for line in f:
+                raw_maze_data.append(line.split())
+        raw_maze_data = np.array(raw_maze_data)
+        self.state = np.zeros(raw_maze_data.shape)
+        for idx, values in enumerate(self.raw_maze_data):
+            for id, value in enumerate(values):
+                if value in ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '=', 'X']:
+                    self.state[idx][id] = 1
+        # for idx, pellet in enumerate(self.eatenPellets):
+        #     x = int(pellet.position.x / 16)
+        #     y = int(pellet.position.y / 16)
+        #     self.state[y][x] = 2
         for idx, pellet in enumerate(self.pellets.pelletList):
             x = int(pellet.position.x / 16)
             y = int(pellet.position.y / 16)

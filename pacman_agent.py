@@ -23,7 +23,6 @@ SAVE_EPISODE_FREQ = 100
 GAMMA = 0.99
 MOMENTUM = 0.95
 MEMORY_SIZE = 20000
-LEARNING_RATE = 0.0005
 
 Experience = namedtuple(
     "Experience", field_names=["state", "action", "reward", "done", "new_state"]
@@ -32,8 +31,8 @@ Experience = namedtuple(
 REVERSED = {0: 1, 1: 0, 2: 3, 3: 2}
 EPS_START = 1.0
 EPS_END = 0.1
-EPS_DECAY = 200000
-MAX_STEPS = 400000
+EPS_DECAY = 400000
+MAX_STEPS = 500000
 
 
 class ExperienceReplay:
@@ -58,43 +57,63 @@ class PacmanAgent:
         self.policy = Conv2dNetwork().to(device)
         self.memory = ExperienceReplay(MEMORY_SIZE)
         self.game = GameWrapper()
+        self.lr = 0.001
         self.last_action = 0
-        self.buffer = deque(maxlen=6)
+        self.buffer = deque(maxlen=4)
         self.last_reward = -1
         self.rewards = []
         self.loop_action_counter = 0
         self.score = 0
         self.episode = 0
-        self.optimizer = optim.Adam(self.policy.parameters(), lr=LEARNING_RATE)
+        self.optimizer = optim.Adam(self.policy.parameters(), lr=self.lr)
         self.scheduler = lr_scheduler.ExponentialLR(self.optimizer, gamma=0.8)
 
     def calculate_reward(
-        self, done, lives, hit_ghost, action, prev_score, info: GameState
+        self, done, lives, hit_ghost, action, prev_score, info: GameState,state
     ):
         reward = 0
+        time_penalty = -0.01
+        movement_penalty = -0.1
+        progress = round((info.collected_pellets / info.total_pellets) * 10)
         if done:
             if lives > 0:
                 print("won")
-                reward = 30
+                reward = 50
             else:
-                reward = -30
+                reward = -50
             return reward
         if self.score - prev_score == 10:
-            reward += 10
+            reward += 1
         if self.score - prev_score == 50:
             print("power up")
-            reward += 14
+            reward += 5
         if reward > 0:
-            progress = (info.collected_pellets / info.total_pellets) * 7
             reward += progress
-            return reward
         if self.score - prev_score >= 200:
-            return 16
+            reward += 20 * ((self.score - prev_score) / 200)
         if info.invalid_move:
-            reward -= 6
+             reward -= 1
         if hit_ghost:
-            reward -= 20
-            return reward
+            reward -= 30
+        reward += time_penalty
+        reward += movement_penalty
+        index = np.where(state == 5)
+        if len(index[0]) != 0:
+            x = index[0][0]
+            y = index[1][0]
+            n1 = (state[x+1][y])
+            n2 = state[x-1][y]
+            n3= state[x][y+1]
+            n4 =(state[x][y-1])
+            if -6 in (n1,n2,n3,n4):
+                reward -= 30
+            elif 3 in (n1,n2,n3,n4):
+                reward += 1 + progress
+            elif 4 in (n1,n2,n3,n4):
+                reward += 3 + progress
+        reward = round(reward,2)
+        if reward != -0.11:
+            print(reward)
         return reward
 
     def write_matrix(self, matrix):
@@ -136,7 +155,7 @@ class PacmanAgent:
         rand = random.random()
         epsilon = max(
             EPS_END, EPS_START - (EPS_START - EPS_END) *
-            (self.steps / 2) / EPS_DECAY
+            (self.steps) / EPS_DECAY
         )
         self.steps += 1
         if rand > epsilon:
@@ -144,7 +163,6 @@ class PacmanAgent:
                 outputs = self.policy(state)
             return outputs.max(1)[1].view(1, 1)
         else:
-            # Random action
             action = random.randrange(N_ACTIONS)
             while action == REVERSED[self.last_action]:
                 action = random.randrange(N_ACTIONS)
@@ -224,6 +242,7 @@ class PacmanAgent:
         state = self.process_state(self.buffer)
         last_score = 0
         lives = 3
+        reward_total = 0
         while True:
             action = self.act(state)
             action_t = action.item()
@@ -244,8 +263,9 @@ class PacmanAgent:
             next_state = self.process_state(self.buffer)
 
             reward_ = self.calculate_reward(
-                done, lives, hit_ghost, action_t, last_score, info
+                done, lives, hit_ghost, action_t, last_score, info,obs
             )
+            reward_total += reward_
             last_score = self.score
             action_tensor = torch.tensor(
                 [[action_t]], device=device, dtype=torch.long)
@@ -263,7 +283,7 @@ class PacmanAgent:
                 epsilon = max(
                     EPS_END,
                     EPS_START - (EPS_START - EPS_END) *
-                    (self.steps / 2) / EPS_DECAY,
+                    (self.steps) / EPS_DECAY,
                 )
                 print(
                     "epsilon",
@@ -277,7 +297,6 @@ class PacmanAgent:
                     "steps",
                     self.steps
                 )
-                # assert reward_sum == reward
                 self.rewards.append(self.score)
                 self.plot_rewards(avg=50)
                 time.sleep(1)
@@ -317,8 +336,8 @@ class PacmanAgent:
 
 if __name__ == "__main__":
     agent = PacmanAgent()
-    agent.load_model(name="700-314695", eval=True)
+    agent.load_model(name="100-39909", eval=False)
     agent.rewards = []
     while True:
-        # agent.train()
-        agent.test()
+        agent.train()
+        #agent.test()
