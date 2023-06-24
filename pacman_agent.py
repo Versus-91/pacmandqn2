@@ -30,8 +30,8 @@ Experience = namedtuple(
 REVERSED = {0: 1, 1: 0, 2: 3, 3: 2}
 EPS_START = 1.0
 EPS_END = 0.1
-EPS_DECAY = 400000
-MAX_STEPS = 500000
+EPS_DECAY = 500000
+MAX_STEPS = 600000
 
 
 class ExperienceReplay:
@@ -100,10 +100,20 @@ class PacmanAgent:
         if len(index[0]) != 0:
             x = index[0][0]
             y = index[1][0]
-            n1 = state[x + 1][y]
-            n2 = state[x - 1][y]
-            n3 = state[x][y + 1]
-            n4 = state[x][y - 1]
+            try:
+                n1 = state[x + 1][y]
+                n2 = state[x - 1][y]
+            except IndexError:
+                n1 = 0
+                n2 = 0
+                print("x",index[0][0],"y",index[1][0])
+            try:
+                n3 = state[x][y + 1]
+                n4 = state[x][y - 1]
+            except IndexError:
+                n3 = 0
+                n4 = 0
+                print("x",index[0][0],"y",index[1][0])
             if -6 in (n1, n2, n3, n4):
                 reward -= 30
             elif 3 in (n1, n2, n3, n4):
@@ -111,8 +121,6 @@ class PacmanAgent:
             elif 4 in (n1, n2, n3, n4):
                 reward += 3 + progress
         reward = round(reward, 2)
-        if reward != -0.11:
-            print(reward)
         return reward
 
     def write_matrix(self, matrix):
@@ -327,7 +335,7 @@ class PacmanAgent:
                 state = self.process_state(self.buffer)
                 if done:
                     self.rewards.append(reward)
-                    self.plot_rewards(name="test.png", avg=2)
+                    self.plot_rewards(name="test.png",items=self.rewards, avg=2)
                     time.sleep(1)
                     self.game.restart()
                     torch.cuda.empty_cache()
@@ -338,9 +346,8 @@ class PacmanAgent:
 
 if __name__ == "__main__":
     agent = PacmanAgent()
-    agent.load_model(name="800-389927", eval=False)
-
+    agent.load_model(name="1200-511012", eval=True)
     agent.rewards = []
     while True:
-        agent.train()
-        #agent.test()
+        #agent.train()
+        agent.test()

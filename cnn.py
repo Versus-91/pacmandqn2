@@ -10,7 +10,7 @@ class Conv2dNetwork(nn.Module):
         self.relu1 = nn.ReLU()
         self.conv2 = nn.Conv2d(16, 32, kernel_size=3, stride=1, padding=1)
         self.relu2 = nn.ReLU()
-        self.fc1 = nn.Linear(32 * 21 * 18, 128)
+        self.fc1 = nn.Linear(32 * 31 * 28, 128)
         self.relu3 = nn.ReLU()
         self.fc2 = nn.Linear(128, 4)
 

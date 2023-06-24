@@ -69,7 +69,6 @@ class GameController(object):
         self.fruitCaptured = []
         self.fruitNode = None
         self.mazedata = MazeData()
-        self.raw_maze_data = []
         self.state = []
         self.pacman_prev = Vector2()
         self.dist = 0
@@ -315,7 +314,7 @@ class GameController(object):
                 raw_maze_data.append(line.split())
         raw_maze_data = np.array(raw_maze_data)
         self.state = np.zeros(raw_maze_data.shape)
-        for idx, values in enumerate(self.raw_maze_data):
+        for idx, values in enumerate(raw_maze_data):
             for id, value in enumerate(values):
                 if value in ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '=', 'X']:
                     self.state[idx][id] = 1
@@ -346,7 +345,7 @@ class GameController(object):
         #     self.pacman_prev = self.pacman.position
         #     print("move",self.pacman.position)
 
-        return self.state[2:34, :]
+        return self.state[3:34, :]
 
     def find_pellet(self, pellet: Pellet) -> bool:
         for i, item in enumerate(self.pellets.pelletList):
