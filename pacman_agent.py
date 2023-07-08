@@ -156,8 +156,6 @@ class PacmanAgent:
             reward += progress
         if self.score - prev_score >= 200:
             reward += 20 * ((self.score - prev_score) / 200)
-        if info.invalid_move:
-            reward -= 1
         if hit_ghost:
             reward -= 30
         reward += time_penalty
@@ -167,25 +165,38 @@ class PacmanAgent:
             x = index[0][0]
             y = index[1][0]
             try:
-                n1 = state[x + 1][y]
-                n2 = state[x - 1][y]
+                upper_cell = state[x + 1][y]
+                lower_cell = state[x - 1][y]
             except IndexError:
-                n1 = 0
-                n2 = 0
+                upper_cell = 0
+                lower_cell = 0
                 print("x",index[0][0],"y",index[1][0])
             try:
-                n3 = state[x][y + 1]
-                n4 = state[x][y - 1]
+                right_cell = state[x][y + 1]
+                left_cell = state[x][y - 1]
             except IndexError:
-                n3 = 0
-                n4 = 0
+                right_cell = 0
+                left_cell = 0
                 print("x",index[0][0],"y",index[1][0])
-            if -6 in (n1, n2, n3, n4):
+            if action == 0:
+                if upper_cell == 1:
+                    reward -= 10
+            elif action == 1:
+                if lower_cell == 1:
+                    reward -= 10
+            elif action == 2:
+                if left_cell == 1:
+                    reward -= 10
+            elif action == 3:
+                if right_cell == 1:
+                    reward -= 10
+            if -6 in (upper_cell, lower_cell, right_cell, left_cell):
                 reward -= 30
-            elif 3 in (n1, n2, n3, n4):
+            elif 3 in (upper_cell, lower_cell, right_cell, left_cell):
                 reward += 1 + progress
-            elif 4 in (n1, n2, n3, n4):
+            elif 4 in (upper_cell, lower_cell, right_cell, left_cell):
                 reward += 3 + progress
+
         reward = round(reward, 2)
         return reward
 
@@ -356,6 +367,7 @@ class PacmanAgent:
                 self.rewards.append(self.score)
                 self.plot_rewards(items= self.rewards, avg=50)
                 #self.plot_rewards(items = self.losses,label="losses",name="losses.png", avg=50)
+                self.writer.add_scalar('episode reward', self.score, global_step=self.episode)
                 time.sleep(1)
                 self.game.restart()
                 torch.cuda.empty_cache()
