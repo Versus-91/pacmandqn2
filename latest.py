@@ -22,82 +22,17 @@ N_ACTIONS = 4
 BATCH_SIZE = 128
 SAVE_EPISODE_FREQ = 100
 GAMMA = 0.99
-MOMENTUM = 0.95
 sync_every = 100
 Experience = namedtuple(
     "Experience", field_names=["state", "action", "reward", "done", "new_state"]
 )
 
 REVERSED = {0: 1, 1: 0, 2: 3, 3: 2}
-EPS_START = 1.0
-EPS_END = 0.1
+EPS_START = 0.9
+EPS_END = 0.05
 EPS_DECAY = 500000
 MAX_STEPS = 600000
-class QItem:
-    def __init__(self, row, col, dist):
-        self.row = row
-        self.col = col
-        self.dist = dist
- 
-    def __repr__(self):
-        return f"QItem({self.row}, {self.col}, {self.dist})"
- 
-def minDistance(grid):
-    source = QItem(0, 0, 0)
- 
-    # Finding the source to start from
-    for row in range(len(grid)):
-        for col in range(len(grid[row])):
-            if grid[row][col] == 's':
-                source.row = row
-                source.col = col
-                break
- 
-    # To maintain location visit status
-    visited = [[False for _ in range(len(grid[0]))]
-               for _ in range(len(grid))]
-     
-    # applying BFS on matrix cells starting from source
-    queue = []
-    queue.append(source)
-    visited[source.row][source.col] = True
-    while len(queue) != 0:
-        source = queue.pop(0)
- 
-        # Destination found;
-        if (grid[source.row][source.col] == 'd'):
-            return source.dist
- 
-        # moving up
-        if isValid(source.row - 1, source.col, grid, visited):
-            queue.append(QItem(source.row - 1, source.col, source.dist + 1))
-            visited[source.row - 1][source.col] = True
- 
-        # moving down
-        if isValid(source.row + 1, source.col, grid, visited):
-            queue.append(QItem(source.row + 1, source.col, source.dist + 1))
-            visited[source.row + 1][source.col] = True
- 
-        # moving left
-        if isValid(source.row, source.col - 1, grid, visited):
-            queue.append(QItem(source.row, source.col - 1, source.dist + 1))
-            visited[source.row][source.col - 1] = True
- 
-        # moving right
-        if isValid(source.row, source.col + 1, grid, visited):
-            queue.append(QItem(source.row, source.col + 1, source.dist + 1))
-            visited[source.row][source.col + 1] = True
- 
-    return -1
- 
- 
-# checking where move is valid or not
-def isValid(x, y, grid, visited):
-    if ((x >= 0 and y >= 0) and
-        (x < len(grid) and y < len(grid[0])) and
-            (grid[x][y] != '0') and (visited[x][y] == False)):
-        return True
-    return False
+
 
 class ExperienceReplay:
     def __init__(self, capacity) -> None:
@@ -122,7 +57,8 @@ class PacmanAgent:
         self.memory = ExperienceReplay(20000)
         self.game = GameWrapper()
         self.lr = 0.001
-        self.last_action = 0
+        self.writer = SummaryWriter('logs/dqn')
+        self.current_direction = 0
         self.buffer = deque(maxlen=4)
         self.last_reward = -1
         self.rewards = []
@@ -131,14 +67,11 @@ class PacmanAgent:
         self.episode = 0
         self.optimizer = optim.Adam(self.policy.parameters(), lr=self.lr)
         self.scheduler = lr_scheduler.ExponentialLR(self.optimizer, gamma=0.8)
-        self.writer = SummaryWriter('logs/dqn')
         self.losses = []
     def calculate_reward(
-        self, done, lives, hit_ghost, action, prev_score, info: GameState, state
+        self, done, lives, hit_ghost, action, prev_score, info: GameState
     ):
         reward = 0
-        time_penalty = -0.01
-        movement_penalty = -0.1
         progress = round((info.collected_pellets / info.total_pellets) * 10)
         if done:
             if lives > 0:
@@ -148,45 +81,56 @@ class PacmanAgent:
                 reward = -50
             return reward
         if self.score - prev_score == 10:
-            reward += 1
+            reward += 3
         if self.score - prev_score == 50:
             print("power up")
-            reward += 5
+            reward += 6
         if reward > 0:
             reward += progress
         if self.score - prev_score >= 200:
             reward += 20 * ((self.score - prev_score) / 200)
-        if info.invalid_move:
-            reward -= 1
         if hit_ghost:
             reward -= 30
-        reward += time_penalty
-        reward += movement_penalty
-        index = np.where(state == 5)
+        index = np.where(info.frame == 5)
         if len(index[0]) != 0:
             x = index[0][0]
             y = index[1][0]
             try:
-                n1 = state[x + 1][y]
-                n2 = state[x - 1][y]
+                upper_cell = info.frame[x + 1][y]
+                lower_cell = info.frame[x - 1][y]
             except IndexError:
-                n1 = 0
-                n2 = 0
+                upper_cell = 0
+                lower_cell = 0
                 print("x",index[0][0],"y",index[1][0])
             try:
-                n3 = state[x][y + 1]
-                n4 = state[x][y - 1]
+                right_cell = info.frame[x][y + 1]
+                left_cell = info.frame[x][y - 1]
             except IndexError:
-                n3 = 0
-                n4 = 0
+                right_cell = 0
+                left_cell = 0
                 print("x",index[0][0],"y",index[1][0])
-            if -6 in (n1, n2, n3, n4):
-                reward -= 30
-            elif 3 in (n1, n2, n3, n4):
-                reward += 1 + progress
-            elif 4 in (n1, n2, n3, n4):
-                reward += 3 + progress
+
+            if action == 0:
+                if upper_cell == 1:
+                    reward -= 10
+            elif action == 1:
+                if lower_cell == 1:
+                    reward -= 10
+            elif action == 2:
+                if left_cell == 1:
+                    reward -= 10
+            elif action == 3:
+                if right_cell == 1:
+                    reward -= 10
+            if -6 in (right_cell, left_cell, upper_cell, lower_cell):
+                reward -= 20
+            elif 3 in (right_cell, left_cell, upper_cell, lower_cell):
+                reward += 1.5
+            elif 4 in (right_cell, left_cell, upper_cell, lower_cell):
+                reward += 3
         reward = round(reward, 2)
+        reward -= 1
+        #print(reward)
         return reward
 
     def write_matrix(self, matrix):
@@ -235,7 +179,7 @@ class PacmanAgent:
             return outputs.max(1)[1].view(1, 1)
         else:
             action = random.randrange(N_ACTIONS)
-            while action == REVERSED[self.last_action]:
+            while action == REVERSED[self.current_direction]:
                 action = random.randrange(N_ACTIONS)
             return torch.tensor([[action]], device=device, dtype=torch.long)
 
@@ -290,9 +234,23 @@ class PacmanAgent:
             name_parts = name.split("-")
             self.episode = int(name_parts[0])
             self.steps = int(name_parts[1])
+            scheduler_steps = round(self.steps // 100000)
+            for i in range(scheduler_steps):
+                self.scheduler.step()
             self.target.train()
             self.policy.train()
-
+    def map_direction(self,dir):
+        if dir == 1:
+            action = 0
+        elif dir == -1:
+            action = 1
+        elif dir == 2:
+            action = 2
+        elif dir == -2:
+            action = 3
+        else:
+            action = random.randrange(N_ACTIONS)
+        return action
     def train(self):
         if self.steps >= MAX_STEPS:
             self.save_model(force=True)
@@ -302,11 +260,11 @@ class PacmanAgent:
         self.episode += 1
         random_action = random.choice([0, 1, 2, 3])
         # obs, self.score, done, info = self.game.step(random_action)
-        # state = self.process_state(obs)
-        # state = torch.tensor(obs).float().to(device)
-        for i in range(6):
+        #state = self.process_state(obs)
+        #state = torch.tensor(obs).float().to(device)
+        for i in range(4):
             obs, self.score, done, info = self.game.step(random_action)
-            self.buffer.append(obs)
+            self.buffer.append(info.frame)
         state = self.process_state(self.buffer)
         last_score = 0
         lives = 3
@@ -321,7 +279,7 @@ class PacmanAgent:
                         break
                 else:
                     break
-            self.buffer.append(obs)
+            self.buffer.append(info.frame)
             hit_ghost = False
             if lives != info.lives:
                 # self.write_matrix(self.buffer)
@@ -330,11 +288,12 @@ class PacmanAgent:
                 if not done:
                     for i in range(3):
                         _, _, _, _ = self.game.step(action_t)
-            # next_state = torch.tensor(obs).float().to(device)
+            #next_state = torch.tensor(obs).float().to(device)
             next_state = self.process_state(self.buffer)
+            #next_state = self.process_state(obs)
 
             reward_ = self.calculate_reward(
-                done, lives, hit_ghost, action_t, last_score, info, obs
+                done, lives, hit_ghost, action_t, last_score, info
             )
             reward_total += reward_
             last_score = self.score
@@ -348,7 +307,7 @@ class PacmanAgent:
             )
             state = next_state
             self.learn()
-            self.last_action = action_t
+            self.current_direction = self.map_direction(info.direction)
             if self.steps % 100000 == 0:
                 self.scheduler.step()
             if done:
@@ -394,7 +353,7 @@ class PacmanAgent:
                 action_t = action.item()
                 for i in range(3):
                     if not done:
-                        obs, reward, done, _ = self.game.step(action_t)
+                        obs, reward, done, info = self.game.step(action_t)
                     else:
                         break
                 self.buffer.append(obs)
@@ -402,6 +361,7 @@ class PacmanAgent:
                 if done:
                     self.rewards.append(reward)
                     self.plot_rewards(name="test.png",items=self.rewards, avg=2)
+                    #self.writer.add_scalar('episode reward', reward, global_step=self.episode)
                     time.sleep(1)
                     self.game.restart()
                     torch.cuda.empty_cache()
@@ -412,8 +372,8 @@ class PacmanAgent:
 
 if __name__ == "__main__":
     agent = PacmanAgent()
-    agent.load_model(name="1200-511012", eval=True)
+    agent.load_model(name="400-195112", eval=False)
     agent.rewards = []
     while True:
-        #agent.train()
-        agent.test()
+        agent.train()
+        #agent.test()
