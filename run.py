@@ -250,7 +250,7 @@ class GameController(object):
         info.food_distance = self.get_distance(state,5,3)
         info.powerup_distance = self.get_distance(state,5,4)
         info.ghost_distance = self.get_distance(state,5,-6)
-        info.frame = self.extract_features(state)
+        info.frame = state
         self.last_dir = self.pacman.direction
         return (state, self.score, self.lives == 0 or (self.pellets.isEmpty()), info)
 

@@ -153,7 +153,13 @@ class PacmanAgent:
         with open("outfile.txt", "wb") as f:
             for line in matrix:
                 np.savetxt(f, line, fmt="%.2f")
-
+    def pacman_pos(self,state):
+        index = np.where(state == 5)
+        if len(index[0]) != 0:
+            x = index[0][0]
+            y = index[1][0]
+            return (x,y)
+        return None
     def learn(self):
         if len(self.memory) < BATCH_SIZE:
             return
@@ -268,17 +274,22 @@ class PacmanAgent:
             obs, self.score, done, info = self.game.step(random_action)
             self.buffer.append(obs)
         state = self.process_state(self.buffer)
+        pacman_pos = self.pacman_pos(info.frame)
         last_score = 0
         lives = 3
         reward_total = 0
         while True:
             action = self.act(state)
             action_t = action.item()
-            for i in range(3):
+            while True:
                 if not done:
                     obs, self.score, done, info = self.game.step(action_t)
-                    if lives != info.lives or self.score - last_score != 0:
+                    pacman_pos_new = self.pacman_pos(info.frame)
+                    if pacman_pos_new != pacman_pos or info.invalid_move:
+                        pacman_pos = pacman_pos_new
                         break
+                    else:
+                        print("skip...")
                 else:
                     break
             self.buffer.append(obs)
