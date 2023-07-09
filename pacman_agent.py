@@ -33,71 +33,6 @@ EPS_START = 1.0
 EPS_END = 0.1
 EPS_DECAY = 500000
 MAX_STEPS = 600000
-class QItem:
-    def __init__(self, row, col, dist):
-        self.row = row
-        self.col = col
-        self.dist = dist
- 
-    def __repr__(self):
-        return f"QItem({self.row}, {self.col}, {self.dist})"
- 
-def minDistance(grid):
-    source = QItem(0, 0, 0)
- 
-    # Finding the source to start from
-    for row in range(len(grid)):
-        for col in range(len(grid[row])):
-            if grid[row][col] == 's':
-                source.row = row
-                source.col = col
-                break
- 
-    # To maintain location visit status
-    visited = [[False for _ in range(len(grid[0]))]
-               for _ in range(len(grid))]
-     
-    # applying BFS on matrix cells starting from source
-    queue = []
-    queue.append(source)
-    visited[source.row][source.col] = True
-    while len(queue) != 0:
-        source = queue.pop(0)
- 
-        # Destination found;
-        if (grid[source.row][source.col] == 'd'):
-            return source.dist
- 
-        # moving up
-        if isValid(source.row - 1, source.col, grid, visited):
-            queue.append(QItem(source.row - 1, source.col, source.dist + 1))
-            visited[source.row - 1][source.col] = True
- 
-        # moving down
-        if isValid(source.row + 1, source.col, grid, visited):
-            queue.append(QItem(source.row + 1, source.col, source.dist + 1))
-            visited[source.row + 1][source.col] = True
- 
-        # moving left
-        if isValid(source.row, source.col - 1, grid, visited):
-            queue.append(QItem(source.row, source.col - 1, source.dist + 1))
-            visited[source.row][source.col - 1] = True
- 
-        # moving right
-        if isValid(source.row, source.col + 1, grid, visited):
-            queue.append(QItem(source.row, source.col + 1, source.dist + 1))
-            visited[source.row][source.col + 1] = True
- 
-    return -1
- 
- 
-# checking where move is valid or not
-def isValid(x, y, grid, visited):
-    if ((x >= 0 and y >= 0) and
-        (x < len(grid) and y < len(grid[0])) and
-            (grid[x][y] != '0') and (visited[x][y] == False)):
-        return True
-    return False
 
 class ExperienceReplay:
     def __init__(self, capacity) -> None:
@@ -133,12 +68,27 @@ class PacmanAgent:
         self.scheduler = lr_scheduler.ExponentialLR(self.optimizer, gamma=0.8)
         self.writer = SummaryWriter('logs/dqn')
         self.losses = []
+        self.prev_game_state = GameState()
     def calculate_reward(
         self, done, lives, hit_ghost, action, prev_score, info: GameState, state
     ):
         reward = 0
-        time_penalty = -0.01
-        movement_penalty = -0.1
+        movement_penalty = -1
+        # if self.prev_game_state.ghost_distance == info.ghost_distance:
+        #     a = 1
+        # elif self.prev_game_state.ghost_distance != info.ghost_distance and self.prev_game_state.ghost_distance < 10:
+        #     if(self.prev_game_state.ghost_distance > info.ghost_distance):
+        #         print("close")
+        #     else:
+        #         print("farther")
+        if self.prev_game_state.food_distance >= info.food_distance:
+            reward += 1
+        elif self.prev_game_state.food_distance < info.food_distance:
+            reward -= 1
+        if self.prev_game_state.powerup_distance >= info.powerup_distance:
+            reward += 1
+        elif self.prev_game_state.powerup_distance < info.powerup_distance:
+            reward -= 1
         progress = round((info.collected_pellets / info.total_pellets) * 10)
         if done:
             if lives > 0:
@@ -158,8 +108,6 @@ class PacmanAgent:
             reward += 20 * ((self.score - prev_score) / 200)
         if hit_ghost:
             reward -= 30
-        reward += time_penalty
-        reward += movement_penalty
         index = np.where(state == 5)
         if len(index[0]) != 0:
             x = index[0][0]
@@ -196,8 +144,9 @@ class PacmanAgent:
                 reward += 1 + progress
             elif 4 in (upper_cell, lower_cell, right_cell, left_cell):
                 reward += 3 + progress
-
+        reward += movement_penalty
         reward = round(reward, 2)
+        print(reward)
         return reward
 
     def write_matrix(self, matrix):
@@ -325,7 +274,7 @@ class PacmanAgent:
         while True:
             action = self.act(state)
             action_t = action.item()
-            for i in range(3):
+            for i in range(4):
                 if not done:
                     obs, self.score, done, info = self.game.step(action_t)
                     if lives != info.lives or self.score - last_score != 0:
@@ -360,6 +309,7 @@ class PacmanAgent:
             state = next_state
             self.learn()
             self.last_action = action_t
+            self.prev_game_state = info
             if self.steps % 100000 == 0:
                 self.scheduler.step()
             if done:
@@ -424,8 +374,8 @@ class PacmanAgent:
 
 if __name__ == "__main__":
     agent = PacmanAgent()
-    agent.load_model(name="1200-511012", eval=True)
+    #agent.load_model(name="1200-511012", eval=True)
     agent.rewards = []
     while True:
-        #agent.train()
-        agent.test()
+        agent.train()
+        #agent.test()
