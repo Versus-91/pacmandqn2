@@ -37,9 +37,9 @@ MAX_STEPS = 600000
 class PacmanNet(nn.Module):
     def __init__(self):
         super(PacmanNet, self).__init__()
-        self.fc1 = nn.Linear(7, 16)
-        self.fc2 = nn.Linear(16, 32)
-        self.fc3 = nn.Linear(32, 4)
+        self.fc1 = nn.Linear(11, 32)
+        self.fc2 = nn.Linear(32, 64)
+        self.fc3 = nn.Linear(64, 4)
         self.relu = nn.ReLU()
 
     def forward(self, x):
@@ -182,7 +182,6 @@ class PacmanAgent:
             with torch.no_grad():
                 outputs = self.policy(state)
             res = torch.argmax(outputs)
-            print("predicted action", res.item())
             return torch.argmax(outputs)
 
         else:
@@ -306,7 +305,7 @@ class PacmanAgent:
             )
             state = next_state
             self.learn()
-            self.current_direction = self.map_direction(info.direction)
+            self.current_direction = action_t
             if self.steps % 100000 == 0:
                 self.scheduler.step()
             if done:
@@ -368,7 +367,7 @@ class PacmanAgent:
 
 if __name__ == "__main__":
     agent = PacmanAgent()
-    agent.load_model(name="400-298452", eval=False)
+    #gent.load_model(name="400-298452", eval=False)
     agent.rewards = []
     while True:
         agent.train()
