@@ -274,7 +274,7 @@ class PacmanAgent:
         while True:
             action = self.act(state)
             action_t = action.item()
-            for i in range(4):
+            for i in range(3):
                 if not done:
                     obs, self.score, done, info = self.game.step(action_t)
                     if lives != info.lives or self.score - last_score != 0:
