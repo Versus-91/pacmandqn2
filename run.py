@@ -272,29 +272,24 @@ class GameController(object):
     def extract_features(self,state):
         max_path = 35
         features = []
-        index = np.where(state == 5)
-        if len(index[0]) != 0:
-            x = index[0][0]
-            y = index[1][0]
-            try:
-                upper_cell = state[x + 1][y]
-                lower_cell = state[x - 1][y]
-            except IndexError:
-                upper_cell = 0
-                lower_cell = 0
-                print("x",index[0][0],"y",index[1][0])
-            try:
-                right_cell = state[x][y + 1]
-                left_cell = state[x][y - 1]
-            except IndexError:
-                right_cell = 0
-                left_cell = 0
-                print("x",index[0][0],"y",index[1][0])
+        pacman_x = int(round(self.pacman.position.x / 16))
+        pacman_y = int(round(self.pacman.position.y / 16))
+        try:
+            upper_cell = state[pacman_y + 1][pacman_x]
+            lower_cell = state[pacman_y - 1][pacman_x]
+        except IndexError:
+            upper_cell = 0
+            lower_cell = 0
+        try:
+            right_cell = state[pacman_y][pacman_x + 1]
+            left_cell = state[pacman_y][pacman_x - 1]
+        except IndexError:
+            right_cell = 0
+            left_cell = 0
         if upper_cell == 1:
             features.append(1)
         else:
             features.append(0)
-
         if lower_cell == 1:
             features.append(1)
         else:
@@ -311,8 +306,6 @@ class GameController(object):
             self.pellets.pelletList) + len(self.eatenPellets)
         progress =(total_foods - len(self.eatenPellets)) / total_foods
         features.append(progress)
-        pacman_x = int(round(self.pacman.position.x / 16))
-        pacman_y = int(round(self.pacman.position.y / 16))
         closest_food_distance = 1000
         closest_powerup_distance = 1000
         closest_food_distance = self.get_distance(state,5,3)
@@ -330,30 +323,26 @@ class GameController(object):
             max = 0
             
             if ghost[1].mode.current is FREIGHT:
-                scared_ghost_pacman_distance = abs(pacman_x - x) + abs(pacman_y - y)
-                if scared_ghost_pacman_distance < closest_scare_ghost_distance:
-                    closest_scare_ghost_distance = scared_ghost_pacman_distance
                 if ghost[1].mode.timer > max :
                     max = ghost[1].mode.timer
-            elif ghost[1].mode.current is CHASE or ghost[1].mode.current is SCATTER:
-                ghost_pacman_distance = abs(pacman_x - x) + abs(pacman_y - y)
-                if ghost_pacman_distance < closest_ghost_distance:
-                    closest_ghost_distance = ghost_pacman_distance
         if max != 0 :
             features.append(round(1 - (7 - max) / 7 , 3))
         else:
             features.append(0)
-        if closest_ghost_distance != 1000:
+
+        closest_ghost_distance = self.get_distance(state,5,-6)
+        closest_scare_ghost_distance = self.get_distance(state,5,6)
+        if closest_ghost_distance != -1:
             features.append(round((max_path - closest_ghost_distance) / max_path,3))
         else:
             features.append(-1)
-        if closest_scare_ghost_distance != 1000:
+        if closest_scare_ghost_distance != -1:
             features.append(round((max_path - closest_scare_ghost_distance) / max_path,3))
         else:
             features.append(-1)
         if self.pacman.direction == self.last_dir:
             features.append(1)
-        elif self.pacman.direction != 0 and self.pacman.direction != None and self.pacman.direction != self.last_dir:
+        else:
             features.append(0)
         return features
     def check_ghost_pos(seld, wall, x, y):
@@ -456,7 +445,8 @@ class GameController(object):
         #     self.pacman_prev = self.pacman.position
         #     print("move",self.pacman.position)
 
-        return self.state[3:34, :]
+        #return self.state[3:34, :]
+        return self.state
 
     def find_pellet(self, pellet: Pellet) -> bool:
         for i, item in enumerate(self.pellets.pelletList):
