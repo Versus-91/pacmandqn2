@@ -495,9 +495,9 @@ class GameController(object):
             self.updateScore(pellet.points)
             if self.pellets.numEaten == 30:
                 self.ghosts.inky.startNode.allowAccess(RIGHT, self.ghosts.inky)
-            if self.pellets.numEaten == 70:
-                self.ghosts.clyde.startNode.allowAccess(
-                    LEFT, self.ghosts.clyde)
+            # if self.pellets.numEaten == 70:
+            #     self.ghosts.clyde.startNode.allowAccess(
+            #         LEFT, self.ghosts.clyde)
             self.pellets.pelletList.remove(pellet)
             if pellet.name == POWERPELLET:
                 self.ghosts.startFreight()
