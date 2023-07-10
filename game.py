@@ -1,15 +1,14 @@
 import cv2
 import numpy as np
 from constants import *
-from run import GameController
 import matplotlib.pyplot as plt
 import torchvision.transforms as transforms
 from PIL import Image
 
 
 class GameWrapper:
-    def __init__(self):
-        self.controller = GameController()
+    def __init__(self,ctr ):
+        self.controller = ctr
         self.action = UP
 
     def start(self):

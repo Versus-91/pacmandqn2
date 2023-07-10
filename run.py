@@ -83,9 +83,9 @@ class GameController(object):
         self.pacman_prev = Vector2()
         self.dist = 0
         self.last_dir = 0
-        self.generation = 0
+        self.generation = -1
         self.net=None
-        self.game = GameWrapper()
+        self.game = GameWrapper(self)
 
     def setBackground(self):
         self.background_norm = pygame.surface.Surface(SCREENSIZE).convert()
@@ -212,32 +212,65 @@ class GameController(object):
             self.net = neat.nn.FeedForwardNetwork.create(g, config)
             time_since_last_coin = pygame.time.get_ticks()
             running = True
-            fitness = 0
+            g.fitness = 0
+            invalid = 0
+            last_act = 0
             while running:
-                lives = self.lives
-                dt = self.clock.tick(120) / 1000
-                self.game.step()
+                done = False
+                score = self.score
+                while True:
+                    state = self.get_frame_neat()
+                    pacman_pos = self.pacman_pos(state)
+                    action = self.neat_step(state)
+                    if action != None:
+                        last_act = action
+                    if not done:
+                        if action == None:
+                            action = last_act
+                        obs, self.score, done, info = self.game.step(action)
+                        pacman_pos_new = self.pacman_pos(info.frame)
+                        if self.score == score:
+                            invalid += 1 
+                        else:
+                            invalid = 0                           
+                        if pacman_pos_new != pacman_pos or info.invalid_move:
+                            pacman_pos = pacman_pos_new
+                            break
+                    else:
+                        break
+                score =self.score
+                if invalid == 50:
+                    running = False
+                if self.lives != 3:
+                    running = False
+            g.fitness = self.score
+            self.game.restart()
+
+    def pacman_pos(self,state):
+        index = np.where(state == 5)
+        if len(index[0]) != 0:
+            x = index[0][0]
+            y = index[1][0]
+            return (x,y)
+        return None
     def neat_step(self,state):
-        # activate neural network
-        pacman_x = int(round(self.pacman.position.x / 16))
-        pacman_y = int(round(self.pacman.position.y / 16))
-        for ghost in enumerate(self.ghosts):
-            x = int(round(ghost[1].position.x / 16))
-            y = int(round(ghost[1].position.y / 16))
-            max = 0
-            
-            if ghost[1].mode.current is FREIGHT:
-                if ghost[1].mode.timer > max :
-                    max = ghost[1].mode.timer        
+        food_distance = minDistance(state,5,3)
+        powerup_distance = minDistance(state,5,4)
+        ghost_1_distance = minDistance(state,5,6)
+        ghost_2_distance = minDistance(state,5,7)
+        ghost_3_distance = minDistance(state,5,8)
+        ghost_4_distance = minDistance(state,5,9)
+        foods_count = len([pellet for pellet in self.pellets.pelletList if pellet.name == 1])
+        powerup_count = len([pellet for pellet in self.pellets.pelletList if pellet.name == 2])
         outputs = self.net.activate((
-        num_coins_left,
-        num_coins_right,
-        num_coins_up,
-        num_coins_down,
-        distance_to_blinky,
-        distance_to_pinky,
-        distance_to_inky,
-        distance_to_clyde
+        food_distance,
+        powerup_distance,
+        foods_count,
+        powerup_count,
+        ghost_1_distance,
+        ghost_2_distance,
+        ghost_3_distance,
+        ghost_4_distance
         ))
 
         #direction = output.index(max(output))
@@ -250,7 +283,8 @@ class GameController(object):
 
         # only change direction if output is > 0.8
         if maxVal > 0.8:
-            self.game.step(direction)
+            return direction
+        return None
         
     def perform_action(self, action):
         state = None
@@ -495,7 +529,48 @@ class GameController(object):
 
         return self.state[3:34, :]
         #return self.state
+    def get_frame_neat(self):
+        raw_maze_data = []
+        with open('maze1.txt', 'r') as f:
+            for line in f:
+                raw_maze_data.append(line.split())
+        raw_maze_data = np.array(raw_maze_data)
+        self.state = np.zeros(raw_maze_data.shape)
+        for idx, values in enumerate(raw_maze_data):
+            for id, value in enumerate(values):
+                if value in ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '=', 'X']:
+                    self.state[idx][id] = 1
+        # for idx, pellet in enumerate(self.eatenPellets):
+        #     x = int(pellet.position.x / 16)
+        #     y = int(pellet.position.y / 16)
+        #     self.state[y][x] = 2
+        for idx, pellet in enumerate(self.pellets.pelletList):
+            x = int(pellet.position.x / 16)
+            y = int(pellet.position.y / 16)
+            if pellet.name == 1:
+                self.state[y][x] = 3
+            else:
+                self.state[y][x] = 4
+        x = int(round(self.pacman.position.x / 16))
+        y = int(round(self.pacman.position.y / 16))
+        self.state[y][x] = 5
+        assert self.state[y][x] != 1
+        for ghost in enumerate(self.ghosts):
+            index = 0
+            x = int(round(ghost[1].position.x / 16))
+            y = int(round(ghost[1].position.y / 16))
+            if ghost[1].mode.current is not FREIGHT and ghost[1].mode.current is not SPAWN:
+                self.state[y][x] = 6+index
+            # else:
+            #     self.state[y][x] = (6+index)
+            index += 1
+        # dist = math.sqrt((self.pacman_prev.x - x)**2 + (self.pacman_prev.y - x)**2)
+        # if abs(self.pacman_prev.x - x) >= 16 or abs(self.pacman_prev.y - y) >= 16:
+        #     self.pacman_prev = self.pacman.position
+        #     print("move",self.pacman.position)
 
+        return self.state[3:34, :]
+        #return self.state
     def find_pellet(self, pellet: Pellet) -> bool:
         for i, item in enumerate(self.pellets.pelletList):
             if item.position.x == pellet.position.x and item.position.y == pellet.position.y:
