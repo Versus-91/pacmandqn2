@@ -6,6 +6,7 @@ import pygame
 from pygame.locals import *
 from bfs import minDistance
 from constants import *
+from game import GameWrapper
 from pacman import Pacman
 from nodes import NodeGroup
 from pellets import Pellet, PelletGroup
@@ -17,6 +18,7 @@ from sprites import LifeSprites
 from sprites import MazeSprites
 from mazedata import MazeData
 from vector import Vector2
+import neat
 
 game_states = {
     'pallet': 1,
@@ -81,6 +83,9 @@ class GameController(object):
         self.pacman_prev = Vector2()
         self.dist = 0
         self.last_dir = 0
+        self.generation = 0
+        self.net=None
+        self.game = GameWrapper()
 
     def setBackground(self):
         self.background_norm = pygame.surface.Surface(SCREENSIZE).convert()
@@ -93,6 +98,8 @@ class GameController(object):
             self.background_flash, 5)
         self.flashBG = False
         self.background = self.background_norm
+    
+
 
     def startGame(self):
         self.textgroup.hideText()
@@ -193,18 +200,57 @@ class GameController(object):
         self.checkEvents()
         self.render()
         state = self.get_frame()
-        #print(self.extract_features(state))
-        self.last_dir = self.pacman.direction
-        # print(self.get_distance(state,5,3)) 
-        # print(self.get_distance(state,5,4)) 
-        if self.get_distance(state,5,-6) < 5:
-            print(self.get_distance(state,5,-6)) 
 
 
 
     def get_distance(self,state,target,destination):
         return minDistance(state,target,destination)
 
+    def run_neat(self,genomes,config):
+        self.generation += 1
+        for _,g in genomes:
+            self.net = neat.nn.FeedForwardNetwork.create(g, config)
+            time_since_last_coin = pygame.time.get_ticks()
+            running = True
+            fitness = 0
+            while running:
+                lives = self.lives
+                dt = self.clock.tick(120) / 1000
+                self.game.step()
+    def neat_step(self,state):
+        # activate neural network
+        pacman_x = int(round(self.pacman.position.x / 16))
+        pacman_y = int(round(self.pacman.position.y / 16))
+        for ghost in enumerate(self.ghosts):
+            x = int(round(ghost[1].position.x / 16))
+            y = int(round(ghost[1].position.y / 16))
+            max = 0
+            
+            if ghost[1].mode.current is FREIGHT:
+                if ghost[1].mode.timer > max :
+                    max = ghost[1].mode.timer        
+        outputs = self.net.activate((
+        num_coins_left,
+        num_coins_right,
+        num_coins_up,
+        num_coins_down,
+        distance_to_blinky,
+        distance_to_pinky,
+        distance_to_inky,
+        distance_to_clyde
+        ))
+
+        #direction = output.index(max(output))
+        maxVal = 0
+        direction = 0
+        for idx, output in enumerate(outputs):
+            if output > maxVal:
+                maxVal = output
+                direction = idx
+
+        # only change direction if output is > 0.8
+        if maxVal > 0.8:
+            self.game.step(direction)
         
     def perform_action(self, action):
         state = None
@@ -497,9 +543,9 @@ class GameController(object):
             self.updateScore(pellet.points)
             if self.pellets.numEaten == 30:
                 self.ghosts.inky.startNode.allowAccess(RIGHT, self.ghosts.inky)
-            # if self.pellets.numEaten == 70:
-            #     self.ghosts.clyde.startNode.allowAccess(
-            #         LEFT, self.ghosts.clyde)
+            if self.pellets.numEaten == 70:
+                self.ghosts.clyde.startNode.allowAccess(
+                    LEFT, self.ghosts.clyde)
             self.pellets.pelletList.remove(pellet)
             if pellet.name == POWERPELLET:
                 self.ghosts.startFreight()

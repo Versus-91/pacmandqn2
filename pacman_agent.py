@@ -29,9 +29,9 @@ Experience = namedtuple(
 )
 
 REVERSED = {0: 1, 1: 0, 2: 3, 3: 2}
-EPS_START = 0.9
-EPS_END = 0.1
-EPS_DECAY = 400000
+EPS_START = 0.95
+EPS_END = 0.05
+EPS_DECAY = 500000
 MAX_STEPS = 500000
 
 class ExperienceReplay:
@@ -163,22 +163,25 @@ class PacmanAgent:
                 reward = -50
             return reward
         if info.invalid_move:
-            reward -= 20 
+            reward -= 25 
             return reward   
+        progress = round((info.collected_pellets / info.total_pellets) * 10)
         if self.prev_game_state.food_distance > info.food_distance:
-            reward += 1
+            reward += 1 + int(progress // 3)
         elif self.prev_game_state.food_distance < info.food_distance:
             reward -= 1
-        if self.prev_game_state.powerup_distance >= info.powerup_distance:
-            reward += 2
+        if self.prev_game_state.powerup_distance >= info.powerup_distance and info.powerup_distance != -1:
+            reward += 2 + int(progress // 3)
         if self.prev_game_state.scared_ghost_distance >= info.scared_ghost_distance and info.scared_ghost_distance != -1 :
             reward += 3
-        if self.prev_game_state.ghost_distance < 5 and info.ghost_distance != -1:
+        if self.prev_game_state.ghost_distance < 4 and info.ghost_distance != -1:
             if self.prev_game_state.ghost_distance > info.ghost_distance:
                 reward -= 10
             elif self.prev_game_state.ghost_distance <= info.ghost_distance:
-                reward += 10
-        progress = round((info.collected_pellets / info.total_pellets) * 10)
+                reward += 5
+        elif self.prev_game_state.ghost_distance > 4:
+            if action == REVERSED[self.last_action]:
+                reward -= 1
         if self.score - prev_score == 10:
             reward += 3
         if self.score - prev_score == 50:
@@ -190,6 +193,8 @@ class PacmanAgent:
         if hit_ghost:
             reward -= 30   
         reward = round(reward, 2)
+        if action == self.last_action:
+            reward+=1
         return reward
     def write_matrix(self, matrix):
         with open("outfile.txt", "wb") as f:
