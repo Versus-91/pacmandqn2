@@ -6,6 +6,7 @@ import pygame
 from pygame.locals import *
 from bfs import minDistance
 from constants import *
+from count_pallets import count_occurrences
 from game import GameWrapper
 from pacman import Pacman
 from nodes import NodeGroup
@@ -260,11 +261,15 @@ class GameController(object):
         ghost_2_distance = minDistance(state,5,7)
         ghost_3_distance = minDistance(state,5,8)
         ghost_4_distance = minDistance(state,5,9)
+        pacman_pos = self.pacman_pos(state)
         foods_count = len([pellet for pellet in self.pellets.pelletList if pellet.name == 1])
         powerup_count = len([pellet for pellet in self.pellets.pelletList if pellet.name == 2])
+        count_above, count_below, count_left, count_right = count_occurrences(state, pacman_pos[0], pacman_pos[1], [3,4])
         outputs = self.net.activate((
-        food_distance,
-        powerup_distance,
+        count_above,
+        count_below,
+        count_left,
+        count_right,
         foods_count,
         powerup_count,
         ghost_1_distance,
