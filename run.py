@@ -193,11 +193,12 @@ class GameController(object):
         self.checkEvents()
         self.render()
         state = self.get_frame()
-        print(self.extract_features(state))
+        #print(self.extract_features(state))
         self.last_dir = self.pacman.direction
-        #print(self.get_distance(state,5,3)) 
-        #print(self.get_distance(state,5,4)) 
-        #print(self.get_distance(state,5,-6)) 
+        # print(self.get_distance(state,5,3)) 
+        # print(self.get_distance(state,5,4)) 
+        if self.get_distance(state,5,-6) < 5:
+            print(self.get_distance(state,5,-6)) 
 
 
 
@@ -210,7 +211,7 @@ class GameController(object):
         invalid_move = False
         if not self.pacman.validDirection(action):
             invalid_move = True
-        dt = self.clock.tick(60) / 1000.0
+        dt = self.clock.tick(120) / 1000.0
         self.textgroup.update(dt)
         self.pellets.update(dt)
         if not self.pause.paused:
@@ -250,6 +251,7 @@ class GameController(object):
         info.food_distance = self.get_distance(state,5,3)
         info.powerup_distance = self.get_distance(state,5,4)
         info.ghost_distance = self.get_distance(state,5,-6)
+        info.scared_ghost_distance = self.get_distance(state,5,6)
         info.frame = state
         self.last_dir = self.pacman.direction
         return (state, self.score, self.lives == 0 or (self.pellets.isEmpty()), info)

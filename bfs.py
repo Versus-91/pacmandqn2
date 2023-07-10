@@ -65,7 +65,7 @@ def minDistance(grid,target,detination):
 def isValid(x, y, grid, visited):
     if ((x >= 0 and y >= 0) and
         (x < len(grid) and y < len(grid[0])) and
-            (grid[x][y] != '1') and (visited[x][y] == False)):
+            (grid[x][y] != 1) and (visited[x][y] == False)):
         return True
     return False
  

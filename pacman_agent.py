@@ -29,10 +29,10 @@ Experience = namedtuple(
 )
 
 REVERSED = {0: 1, 1: 0, 2: 3, 3: 2}
-EPS_START = 1.0
+EPS_START = 0.9
 EPS_END = 0.1
-EPS_DECAY = 500000
-MAX_STEPS = 600000
+EPS_DECAY = 400000
+MAX_STEPS = 500000
 
 class ExperienceReplay:
     def __init__(self, capacity) -> None:
@@ -98,9 +98,8 @@ class PacmanAgent:
                 reward = -50
             return reward
         if self.score - prev_score == 10:
-            reward += 1
+            reward += 3
         if self.score - prev_score == 50:
-            print("power up")
             reward += 5
         if reward > 0:
             reward += progress
@@ -118,14 +117,12 @@ class PacmanAgent:
             except IndexError:
                 upper_cell = 0
                 lower_cell = 0
-                print("x",index[0][0],"y",index[1][0])
             try:
                 right_cell = state[x][y + 1]
                 left_cell = state[x][y - 1]
             except IndexError:
                 right_cell = 0
                 left_cell = 0
-                print("x",index[0][0],"y",index[1][0])
             if action == 0:
                 if upper_cell == 1:
                     reward -= 10
@@ -146,9 +143,54 @@ class PacmanAgent:
                 reward += 3 + progress
         reward += movement_penalty
         reward = round(reward, 2)
-        print(reward)
         return reward
+    def distance_based_reward(
+        self, done, lives, hit_ghost, action, prev_score, info: GameState, state
+    ):
+        reward = 0
+        # if self.prev_game_state.ghost_distance == info.ghost_distance:
+        #     a = 1
+        # elif self.prev_game_state.ghost_distance != info.ghost_distance and self.prev_game_state.ghost_distance < 10:
+        #     if(self.prev_game_state.ghost_distance > info.ghost_distance):
+        #         print("close")
+        #     else:
+        #         print("farther")
 
+        if done:
+            if lives > 0:
+                reward = 50
+            else:
+                reward = -50
+            return reward
+        if info.invalid_move:
+            reward -= 20 
+            return reward   
+        if self.prev_game_state.food_distance > info.food_distance:
+            reward += 1
+        elif self.prev_game_state.food_distance < info.food_distance:
+            reward -= 1
+        if self.prev_game_state.powerup_distance >= info.powerup_distance:
+            reward += 2
+        if self.prev_game_state.scared_ghost_distance >= info.scared_ghost_distance and info.scared_ghost_distance != -1 :
+            reward += 3
+        if self.prev_game_state.ghost_distance < 5 and info.ghost_distance != -1:
+            if self.prev_game_state.ghost_distance > info.ghost_distance:
+                reward -= 10
+            elif self.prev_game_state.ghost_distance <= info.ghost_distance:
+                reward += 10
+        progress = round((info.collected_pellets / info.total_pellets) * 10)
+        if self.score - prev_score == 10:
+            reward += 3
+        if self.score - prev_score == 50:
+            reward += 5
+        if reward > 0:
+            reward += progress
+        if self.score - prev_score >= 200:
+            reward += 20 * ((self.score - prev_score) / 200)
+        if hit_ghost:
+            reward -= 30   
+        reward = round(reward, 2)
+        return reward
     def write_matrix(self, matrix):
         with open("outfile.txt", "wb") as f:
             for line in matrix:
@@ -285,11 +327,9 @@ class PacmanAgent:
                 if not done:
                     obs, self.score, done, info = self.game.step(action_t)
                     pacman_pos_new = self.pacman_pos(info.frame)
-                    if pacman_pos_new != pacman_pos or info.invalid_move:
+                    if pacman_pos_new != pacman_pos or info.invalid_move or info.lives != lives:
                         pacman_pos = pacman_pos_new
                         break
-                    else:
-                        print("skip...")
                 else:
                     break
             self.buffer.append(obs)
@@ -304,7 +344,7 @@ class PacmanAgent:
             # next_state = torch.tensor(obs).float().to(device)
             next_state = self.process_state(self.buffer)
 
-            reward_ = self.calculate_reward(
+            reward_ = self.distance_based_reward(
                 done, lives, hit_ghost, action_t, last_score, info, obs
             )
             reward_total += reward_
