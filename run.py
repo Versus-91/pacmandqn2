@@ -87,6 +87,7 @@ class GameController(object):
         self.generation = -1
         self.net=None
         self.game = GameWrapper(self)
+        self.last_position = None
 
     def setBackground(self):
         self.background_norm = pygame.surface.Surface(SCREENSIZE).convert()
@@ -262,6 +263,10 @@ class GameController(object):
         ghost_3_distance = minDistance(state,5,8)
         ghost_4_distance = minDistance(state,5,9)
         pacman_pos = self.pacman_pos(state)
+        if pacman_pos != None:
+            self.last_position = pacman_pos
+        if pacman_pos == None:
+            pacman_pos = self.last_position
         foods_count = len([pellet for pellet in self.pellets.pelletList if pellet.name == 1])
         powerup_count = len([pellet for pellet in self.pellets.pelletList if pellet.name == 2])
         count_above, count_below, count_left, count_right = count_occurrences(state, pacman_pos[0], pacman_pos[1], [3,4])
