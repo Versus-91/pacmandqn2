@@ -333,7 +333,7 @@ class GameController(object):
             y = int(math.floor(ghost[1].position.y / 16))
             if ghost[1].mode.current is not FREIGHT and ghost[1].mode.current is not SPAWN:
                 self.state[y][x] = -6
-            else:
+            elif ghost[1].mode.current is FREIGHT:
                 self.state[y][x] = 6
                 if x == pacman_x and y == pacman_y:
                     self.state[y][x] = 5

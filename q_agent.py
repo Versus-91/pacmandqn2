@@ -141,6 +141,8 @@ class PacmanAgent:
             reward += 3
         elif self.prev_info.food_distance < info.food_distance and info.food_distance != -1:
             reward -= 2
+        if info.scared_ghost_distance < 8 and self.prev_info.scared_ghost_distance >= info.scared_ghost_distance and info.scared_ghost_distance != -1:
+            reward += 3
         reward -= 1            
         if action ==self.last_action and not info.invalid_move:
             reward += 2
@@ -331,7 +333,7 @@ class PacmanAgent:
 
 if __name__ == '__main__':
     agent = PacmanAgent()
-    #agent.load_model(name="1200-646650", eval=True)
+    agent.load_model(name="500-125205", eval=False)
     #gent.episode = 0
     agent.rewards = []
     while True:
