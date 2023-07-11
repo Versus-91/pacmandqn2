@@ -15,8 +15,8 @@ from constants import *
 from game import GameWrapper
 import random
 import matplotlib
+from state import GameState
 
-from gamestate import GameState
 matplotlib.use('Agg')
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 N_ACTIONS = 4
@@ -25,7 +25,7 @@ SAVE_EPISODE_FREQ = 100
 GAMMA = 0.99
 MOMENTUM = 0.95
 MEMORY_SIZE = 30000
-LEARNING_RATE = 0.0001
+LEARNING_RATE = 0.0003
 
 Experience = namedtuple('Experience', field_names=[
                         'state', 'action', 'reward', 'done', 'new_state'])
@@ -109,8 +109,9 @@ class PacmanAgent:
         self.optimizer = optim.Adam(
             self.policy.parameters(), lr=LEARNING_RATE
         )
+        self.prev_info =GameState()
 
-    def calculate_reward(self, done, lives, hit_ghost, action, prev_score,info:GameState):
+    def get_reward(self, done, lives, hit_ghost, action, prev_score,info:GameState):
         reward = 0
         if done:
             if lives > 0:
@@ -119,24 +120,30 @@ class PacmanAgent:
             else:
                 reward = -30
             return reward
+        progress =  int((info.collected_pellets / info.total_pellets) * 7)
         if self.score - prev_score == 10:
             reward += 10
         if self.score - prev_score == 50:
-            print("power up")
+            print("power up")                
             reward += 13
+            if info.ghost_distance != -1 and info.ghost_distance < 10:
+                reward += 3
         if reward > 0:
-            progress =  (info.collected_pellets / info.total_pellets) * 7
             reward += progress
             return reward
         if self.score - prev_score >= 200:
-            return 16
-        if info.invalid_move:
-            reward -= 6
+            return 16 + (self.score - prev_score // 200) * 2
+
         if hit_ghost:
             reward -= 20
-        if action ==self.last_action:
+
+        if self.prev_info.food_distance >= info.food_distance and info.food_distance != -1:
             reward += 3
-        reward -= 2
+        elif self.prev_info.food_distance < info.food_distance and info.food_distance != -1:
+            reward -= 2
+        reward -= 1            
+        if action ==self.last_action and not info.invalid_move:
+            reward += 2
         return reward
 
     def optimize_model(self):
@@ -265,6 +272,7 @@ class PacmanAgent:
                         action_t)
                     pacman_pos_new = self.pacman_pos(obs[2])
                     if pacman_pos_new != pacman_pos or  lives != info.lives or info.invalid_move:
+                        pacman_pos = pacman_pos_new
                         break
                 else:
                     break
@@ -273,7 +281,8 @@ class PacmanAgent:
                 hit_ghost = True
                 lives -= 1
             next_state = self.process_state(obs)
-            reward_ = self.calculate_reward(done, lives, hit_ghost, action_t, last_score, info)
+            reward_ = self.get_reward(done, lives, hit_ghost, action_t, last_score, info)
+            self.prev_info = info
             last_score = self.score
             self.memory.append(state, action,torch.tensor([reward_], device=device), next_state, done)
             state = next_state
