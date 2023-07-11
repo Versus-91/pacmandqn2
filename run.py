@@ -7,7 +7,6 @@ from pygame.locals import *
 from bfs import minDistance
 from constants import *
 from count_pallets import count_occurrences
-from game import GameWrapper
 from pacman import Pacman
 from nodes import NodeGroup
 from pellets import Pellet, PelletGroup
@@ -85,8 +84,9 @@ class GameController(object):
         self.dist = 0
         self.last_dir = 0
         self.generation = -1
+        self.raw_maze =[]
         self.net=None
-        self.game = GameWrapper(self)
+        self.game = None
         self.last_position = None
 
     def setBackground(self):
@@ -171,6 +171,7 @@ class GameController(object):
         self.nodes.denyAccessList(15, 26, UP, self.ghosts)
 
     def update(self):
+        died = False
         dt = self.clock.tick(120) / 1000
         self.textgroup.update(dt)
         self.pellets.update(dt)
@@ -186,6 +187,8 @@ class GameController(object):
             if not self.pause.paused:
                 self.pacman.update(dt)
         else:
+            died = True
+            state = self.get_frame()
             self.pacman.update(dt)
         if self.flashBG:
             self.flashTimer += dt
@@ -201,7 +204,14 @@ class GameController(object):
             afterPauseMethod()
         self.checkEvents()
         self.render()
-        state = self.get_frame()
+        if died:
+            s2 = self.get_frame()
+            d = minDistance(state,5,-6)
+            d2 = minDistance(s2,5,-6)
+            if d != d2:
+                a =112
+            died = False
+        z = "y"
 
 
 
@@ -299,6 +309,7 @@ class GameController(object):
     def perform_action(self, action):
         state = None
         invalid_move = False
+
         if not self.pacman.validDirection(action):
             invalid_move = True
         dt = self.clock.tick(120) / 1000.0
@@ -311,7 +322,6 @@ class GameController(object):
             self.checkPelletEvents()
             self.checkGhostEvents()
             self.checkFruitEvents()
-
         if self.pacman.alive:
             if not self.pause.paused:
                 self.pacman.update(dt, action)
@@ -325,13 +335,13 @@ class GameController(object):
         #             self.background = self.background_flash
         #         else:
         #             self.background = self.background_norm
-
         afterPauseMethod = self.pause.update(dt)
         if afterPauseMethod is not None:
             afterPauseMethod()
         self.checkEvents()
         self.render()
         state = self.get_frame()
+        pos = self.pacman_pos(state)
         info = GameState()
         info.lives = self.lives
         info.invalid_move = invalid_move
@@ -501,12 +511,13 @@ class GameController(object):
 
     def get_frame(self):
         raw_maze_data = []
-        with open('maze1.txt', 'r') as f:
-            for line in f:
-                raw_maze_data.append(line.split())
-        raw_maze_data = np.array(raw_maze_data)
-        self.state = np.zeros(raw_maze_data.shape)
-        for idx, values in enumerate(raw_maze_data):
+        if len(self.raw_maze) == 0:
+            with open('maze1.txt', 'r') as f:
+                for line in f:
+                    raw_maze_data.append(line.split())
+            self.raw_maze = np.array(raw_maze_data)
+        self.state = np.zeros(self.raw_maze.shape)
+        for idx, values in enumerate(self.raw_maze):
             for id, value in enumerate(values):
                 if value in ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '=', 'X']:
                     self.state[idx][id] = 1
@@ -521,17 +532,19 @@ class GameController(object):
                 self.state[y][x] = 3
             else:
                 self.state[y][x] = 4
-        x = int(round(self.pacman.position.x / 16))
-        y = int(round(self.pacman.position.y / 16))
-        self.state[y][x] = 5
+        pacman_x = int(math.floor(self.pacman.position.x / 16))
+        pacman_y = int(math.floor(self.pacman.position.y / 16))
+        self.state[pacman_y][pacman_x] = 5
         assert self.state[y][x] != 1
         for ghost in enumerate(self.ghosts):
-            x = int(round(ghost[1].position.x / 16))
-            y = int(round(ghost[1].position.y / 16))
+            x = int(math.floor(ghost[1].position.x / 16))
+            y = int(math.floor(ghost[1].position.y / 16))
             if ghost[1].mode.current is not FREIGHT and ghost[1].mode.current is not SPAWN:
                 self.state[y][x] = -6
             else:
                 self.state[y][x] = 6
+                if x == pacman_x and y == pacman_y:
+                    self.state[y][x] = 5
         # dist = math.sqrt((self.pacman_prev.x - x)**2 + (self.pacman_prev.y - x)**2)
         # if abs(self.pacman_prev.x - x) >= 16 or abs(self.pacman_prev.y - y) >= 16:
         #     self.pacman_prev = self.pacman.position
@@ -661,10 +674,10 @@ class GameController(object):
                         if self.lives <= 0:
                             self.textgroup.showText(GAMEOVERTXT)
                             self.pause.setPause(
-                                pauseTime=0.1, func=self.restartGame)
+                                pauseTime=0.05, func=self.restartGame)
                         else:
                             self.pause.setPause(
-                                pauseTime=0.1, func=self.resetLevel)
+                                pauseTime=0.05, func=self.resetLevel)
 
     def checkFruitEvents(self):
         if self.pellets.numEaten == 50 or self.pellets.numEaten == 140:

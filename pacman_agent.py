@@ -196,6 +196,67 @@ class PacmanAgent:
         if action == self.last_action:
             reward+=1
         return reward
+    
+    def calculate_reward_old(
+            self, done, lives, hit_ghost, action, prev_score, info: GameState, state
+        ):
+            reward = 0
+            time_penalty = -0.01
+            movement_penalty = -0.1
+            progress = round((info.collected_pellets / info.total_pellets) * 10)
+            if done:
+                if lives > 0:
+                    print("won")
+                    reward = 50
+                else:
+                    reward = -50
+                return reward
+            if self.score - prev_score == 10:
+                reward += 1
+            if self.score - prev_score == 50:
+                print("power up")
+                reward += 5
+            if reward > 0:
+                reward += progress
+            if self.score - prev_score >= 200:
+                reward += 20 * ((self.score - prev_score) / 200)
+            if info.invalid_move:
+                reward -= 1
+            if hit_ghost:
+                reward -= 30
+            reward += time_penalty
+            reward += movement_penalty
+            index = np.where(state == 5)
+            if len(index[0]) != 0:
+                x = index[0][0]
+                y = index[1][0]
+                try:
+                    n1 = state[x + 1][y]
+                    n2 = state[x - 1][y]
+                except IndexError:
+                    n1 = 0
+                    n2 = 0
+                try:
+                    n3 = state[x][y + 1]
+                    n4 = state[x][y - 1]
+                except IndexError:
+                    n3 = 0
+                    n4 = 0
+                    print("x",index[0][0],"y",index[1][0])
+                if -6 in (n1, n2, n3, n4):
+                    reward -= 30
+                elif 3 in (n1, n2, n3, n4):
+                    reward += 1 + progress
+                elif 4 in (n1, n2, n3, n4):
+                    reward += 3 + progress
+            reward = round(reward, 2)
+            if action == self.last_action:
+                reward += 1
+            if self.prev_game_state.food_distance >= info.food_distance:
+                reward += 2
+            elif self.prev_game_state.food_distance < info.food_distance:
+                reward -= 2
+            return reward
     def write_matrix(self, matrix):
         with open("outfile.txt", "wb") as f:
             for line in matrix:
@@ -207,6 +268,7 @@ class PacmanAgent:
             y = index[1][0]
             return (x,y)
         return None
+    
     def learn(self):
         if len(self.memory) < BATCH_SIZE:
             return
@@ -349,7 +411,7 @@ class PacmanAgent:
             # next_state = torch.tensor(obs).float().to(device)
             next_state = self.process_state(self.buffer)
 
-            reward_ = self.distance_based_reward(
+            reward_ = self.calculate_reward_old(
                 done, lives, hit_ghost, action_t, last_score, info, obs
             )
             reward_total += reward_
@@ -364,7 +426,8 @@ class PacmanAgent:
             )
             state = next_state
             self.learn()
-            self.last_action = action_t
+            if info.invalid_move == False:
+                self.last_action = action_t
             self.prev_game_state = info
             if self.steps % 100000 == 0:
                 self.scheduler.step()
