@@ -35,7 +35,19 @@ class GameWrapper:
 
     def pacman_position(self):
         return self.controller.pacman.position
-
+    def get_invalid_action(self,action):
+        assert action >= 0 and action < 4
+        if action == 0:
+            action = UP
+        elif action == 1:
+            action = DOWN
+        elif action == 2:
+            action = LEFT
+        elif action == 3:
+            action = RIGHT
+        else:
+            print("Invalid action", action)
+        return self.controller.get_invalid_action(action)
     def update(self):
         self.controller.update()
 

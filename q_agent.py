@@ -276,9 +276,6 @@ class PacmanAgent:
                     pacman_pos_new = self.pacman_pos(obs[2])
                     if pacman_pos_new != pacman_pos or  lives != info.lives or info.invalid_move:
                         pacman_pos = pacman_pos_new
-                        if lives != info.lives or info.invalid_move:
-                            for i in range(3):
-                                _, _, _, _ = self.game.step(action_t)
                         break
                 else:
                     break
@@ -297,7 +294,9 @@ class PacmanAgent:
             self.last_action = action_t
             if done:
                 epsilon = max(EPS_END, EPS_START - (EPS_START - EPS_END)* self.counter / EPS_DECAY)
-                print("epsilon: ",epsilon,"reward: ",self.score,"steps: ",self.steps,"completion: ",round((info.collected_pellets / info.total_pellets)*100,2))
+                print("epsilon: ",epsilon,"reward: ",self.score,"steps: ",self.steps,
+                      "completion: ",round((info.collected_pellets / info.total_pellets)*100,2)
+                      ,"spisode",self.episode)
                 # assert reward_sum == reward
                 self.rewards.append(self.score)
                 self.plot_rewards(avg=50)
@@ -345,7 +344,6 @@ class PacmanAgent:
 if __name__ == '__main__':
     agent = PacmanAgent()
     agent.load_model(name="1900-599094", eval=False)
-    agent.episode = 0
     agent.rewards = []
     while True:
         agent.train()

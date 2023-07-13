@@ -174,7 +174,11 @@ class GameController(object):
         self.checkEvents()
         self.render()
         self.get_state()
-
+    def get_invalid_action(self,action):
+         if not self.pacman.validDirection(action):
+            return True
+         return False
+        
     def perform_action(self, action):
         state = []
         invalid_move = False
@@ -276,7 +280,7 @@ class GameController(object):
         walls = np.zeros(maze_data.shape)
         for idx, values in enumerate(maze_data):
             for id, value in enumerate(values):
-                if value not in ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '=', 'X']:
+                if value in ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '=', 'X']:
                     walls[idx][id] = 1
 
         for idx, pellet in enumerate(self.pellets.pelletList):
