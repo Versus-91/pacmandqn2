@@ -133,10 +133,8 @@ class PacmanAgent:
             return reward
         if self.score - prev_score >= 200:
             return 16 + (self.score - prev_score // 200) * 2
-
         if hit_ghost:
             reward -= 20
-
         if self.prev_info.food_distance >= info.food_distance and info.food_distance != -1:
             reward += 3
         elif self.prev_info.food_distance < info.food_distance and info.food_distance != -1:
@@ -310,15 +308,22 @@ class PacmanAgent:
             obs, reward, done, _ = self.game.step(
                 random_action)
             state = self.process_state(obs)
+            pacman_pos = self.pacman_pos(obs[2])
+            lives = 3
             while True:
                 action = self.select_action(state, eval=True)
                 action_t = action.item()
-                for i in range(3):
+                while True:
                     if not done:
-                        obs, reward, done, _ = self.game.step(
+                        obs, self.score, done, info = self.game.step(
                             action_t)
+                        pacman_pos_new = self.pacman_pos(obs[2])
+                        if pacman_pos_new != pacman_pos or  lives != info.lives or info.invalid_move:
+                            pacman_pos = pacman_pos_new
+                            break
                     else:
                         break
+                lives != info.lives
                 state = self.process_state(obs)
                 if done:
                     self.rewards.append(reward)
@@ -333,8 +338,8 @@ class PacmanAgent:
 
 if __name__ == '__main__':
     agent = PacmanAgent()
-    agent.load_model(name="500-125205", eval=False)
-    #gent.episode = 0
+    agent.load_model(name="1900-599094", eval=False)
+    agent.episode = 0
     agent.rewards = []
     while True:
         agent.train()
