@@ -273,10 +273,10 @@ class GameController(object):
         pellets = np.zeros(maze_data.shape)
         ghosts = np.zeros(maze_data.shape)
         pacman = np.zeros(maze_data.shape)
-        walls = np.zeros(maze_data.shape)
+        walls = np.ones(maze_data.shape)
         for idx, values in enumerate(maze_data):
             for id, value in enumerate(values):
-                if value in ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '=', 'X']:
+                if value not in ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '=', 'X']:
                     walls[idx][id] = 1
 
         for idx, pellet in enumerate(self.pellets.pelletList):
@@ -294,7 +294,7 @@ class GameController(object):
         for ghost in enumerate(self.ghosts):
             x = int(math.floor(ghost[1].position.x / 16))
             y = int(math.floor(ghost[1].position.y / 16))
-            if ghost[1].mode.current is not FREIGHT:
+            if ghost[1].mode.current is not FREIGHT and ghost[1].mode.current is not SPAWN:
                 ghosts[y][x] = -1 * \
                     self.direction_state(ghost[1].direction)
             elif ghost[1].mode.current is FREIGHT:
