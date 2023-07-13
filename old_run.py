@@ -273,7 +273,7 @@ class GameController(object):
         pellets = np.zeros(maze_data.shape)
         ghosts = np.zeros(maze_data.shape)
         pacman = np.zeros(maze_data.shape)
-        walls = np.ones(maze_data.shape)
+        walls = np.zeros(maze_data.shape)
         for idx, values in enumerate(maze_data):
             for id, value in enumerate(values):
                 if value not in ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '=', 'X']:

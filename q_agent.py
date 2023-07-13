@@ -144,7 +144,7 @@ class PacmanAgent:
         reward -= 1            
         if action ==self.last_action and not info.invalid_move:
             reward += 2
-        if action == info.invalid_move:
+        if info.invalid_move:
             reward -= 8
             print("invalid move",reward)
         return reward
