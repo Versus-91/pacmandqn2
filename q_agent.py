@@ -16,6 +16,7 @@ from game import GameWrapper
 import random
 import matplotlib
 from state import GameState
+from tensorboardX import SummaryWriter
 
 matplotlib.use('Agg')
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -106,6 +107,7 @@ class PacmanAgent:
         self.counter = 0
         self.score = 0
         self.episode = 0
+        self.writer = SummaryWriter('oldlogs')
         self.optimizer = optim.Adam(
             self.policy.parameters(), lr=LEARNING_RATE
         )
@@ -124,7 +126,6 @@ class PacmanAgent:
         if self.score - prev_score == 10:
             reward += 10
         if self.score - prev_score == 50:
-            print("power up")                
             reward += 13
             if info.ghost_distance != -1 and info.ghost_distance < 10:
                 reward += 3
@@ -151,8 +152,8 @@ class PacmanAgent:
             if action == REVERSED[self.last_action] and not info.invalid_move:
                 reward -= 2
         if info.invalid_move:
-            print("invalid act",reward)
             reward -= 8     
+            print("invalid act",reward)
         reward -= 1            
         return reward
     def optimize_model(self):
@@ -174,6 +175,7 @@ class PacmanAgent:
         criterion = torch.nn.SmoothL1Loss()
         loss = criterion(predicted_targets,
                          labels.detach().unsqueeze(1)).to(device)
+        self.writer.add_scalar('loss', loss.item(), global_step=self.steps)
         self.optimizer.zero_grad()
         loss.backward()
         for param in self.policy.parameters():
@@ -299,10 +301,12 @@ class PacmanAgent:
                 self.optimize_model()
             self.last_action = action_t
             if done:
+
                 epsilon = max(EPS_END, EPS_START - (EPS_START - EPS_END)* self.counter / EPS_DECAY)
-                print("epsilon: ",epsilon,"reward: ",self.score,"steps: ",self.steps,
+                print("epsilon: ",round(epsilon,2),"reward: ",self.score,"steps: ",self.steps,
                       "completion: ",round((info.collected_pellets / info.total_pellets)*100,2)
                       ,"spisode",self.episode)
+                self.writer.add_scalar('episode reward', self.score, global_step=self.episode)
                 # assert reward_sum == reward
                 self.rewards.append(self.score)
                 self.plot_rewards(avg=50)
@@ -349,7 +353,7 @@ class PacmanAgent:
 
 if __name__ == '__main__':
     agent = PacmanAgent()
-    agent.load_model(name="1900-599094", eval=False)
+    #agent.load_model(name="1900-599094", eval=False)
     agent.rewards = []
     while True:
         agent.train()
