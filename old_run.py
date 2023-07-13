@@ -280,7 +280,7 @@ class GameController(object):
         walls = np.zeros(maze_data.shape)
         for idx, values in enumerate(maze_data):
             for id, value in enumerate(values):
-                if value in ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '=', 'X']:
+                if value not in ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '=', 'X']:
                     walls[idx][id] = 1
 
         for idx, pellet in enumerate(self.pellets.pelletList):
@@ -294,7 +294,7 @@ class GameController(object):
         y = int(math.floor(self.pacman.position.y / 16))
         # assert game[y][x] != 1
         pacman[y][x] = self.direction_state(self.pacman.direction)
-        assert walls[y][x] != 1
+        assert walls[y][x] != 0
         for ghost in enumerate(self.ghosts):
             x = int(math.floor(ghost[1].position.x / 16))
             y = int(math.floor(ghost[1].position.y / 16))

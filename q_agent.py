@@ -34,8 +34,8 @@ Experience = namedtuple('Experience', field_names=[
 REVERSED = {0: 1, 1: 0, 2: 3, 3: 2}
 EPS_START = 1.0
 EPS_END = 0.05
-EPS_DECAY = 450000
-MAX_STEPS = 900000
+EPS_DECAY = 400000
+MAX_STEPS = 800000
 
 
 class ExperienceReplay:
@@ -230,8 +230,8 @@ class PacmanAgent:
         channel_matrix = channel_matrix.unsqueeze(0)
         return channel_matrix
 
-    def save_model(self):
-        if self.episode % SAVE_EPISODE_FREQ == 0 and self.episode != 0:
+    def save_model(self,force = False):
+        if self.episode % SAVE_EPISODE_FREQ == 0 and self.episode != 0 or force:
             torch.save(self.policy.state_dict(), os.path.join(
                 os.getcwd() + "\\results", f"policy-model-{self.episode}-{self.steps}.pt"))
             torch.save(self.target.state_dict(), os.path.join(
@@ -263,6 +263,7 @@ class PacmanAgent:
         return None
     def train(self):
         if self.steps >= MAX_STEPS:
+            self.save_model(True)
             return
         self.save_model()
         obs = self.game.start()
@@ -303,7 +304,7 @@ class PacmanAgent:
             if done:
 
                 epsilon = max(EPS_END, EPS_START - (EPS_START - EPS_END)* self.counter / EPS_DECAY)
-                print("epsilon: ",round(epsilon,2),"reward: ",self.score,"steps: ",self.steps,
+                print("epsilon: ","{:.2f}".format(round(epsilon, 2)),"reward: ",self.score,"steps: ",self.steps,
                       "completion: ",round((info.collected_pellets / info.total_pellets)*100,2)
                       ,"spisode",self.episode)
                 self.writer.add_scalar('episode reward', self.score, global_step=self.episode)
