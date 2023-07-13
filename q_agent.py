@@ -304,7 +304,7 @@ class PacmanAgent:
             if done:
 
                 epsilon = max(EPS_END, EPS_START - (EPS_START - EPS_END)* self.counter / EPS_DECAY)
-                print("epsilon: ","{:.2f}".format(round(epsilon, 2)),"reward: ",self.score,"steps: ",self.steps,
+                print("epsilon: ",epsilon,"reward: ",self.score,"steps: ",self.steps,
                       "completion: ",round((info.collected_pellets / info.total_pellets)*100,2)
                       ,"spisode",self.episode)
                 self.writer.add_scalar('episode reward', self.score, global_step=self.episode)
