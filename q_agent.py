@@ -32,9 +32,9 @@ Experience = namedtuple('Experience', field_names=[
 
 REVERSED = {0: 1, 1: 0, 2: 3, 3: 2}
 EPS_START = 1.0
-EPS_END = 0.1
-EPS_DECAY = 400000
-MAX_STEPS = 800000
+EPS_END = 0.05
+EPS_DECAY = 450000
+MAX_STEPS = 900000
 
 
 class ExperienceReplay:
@@ -135,20 +135,26 @@ class PacmanAgent:
             return 16 + (self.score - prev_score // 200) * 2
         if hit_ghost:
             reward -= 20
+        if (info.ghost_distance >=1 and info.ghost_distance < 5):
+            if  self.prev_info.ghost_distance >= info.ghost_distance:
+                reward += 3
+            elif self.prev_info.ghost_distance < info.ghost_distance:
+                reward -= 3
+            return reward
         if self.prev_info.food_distance >= info.food_distance and info.food_distance != -1:
-            reward += 3
+                reward += 3
         elif self.prev_info.food_distance < info.food_distance and info.food_distance != -1:
             reward -= 2
         if info.scared_ghost_distance < 8 and self.prev_info.scared_ghost_distance >= info.scared_ghost_distance and info.scared_ghost_distance != -1:
             reward += 3
-        reward -= 1            
-        if action ==self.last_action and not info.invalid_move:
-            reward += 2
+        if not (info.ghost_distance >=1 and info.ghost_distance < 5):
+            if action == REVERSED[self.last_action] and not info.invalid_move:
+                reward -= 2
         if info.invalid_move:
-            reward -= 8
-            print("invalid move",reward)
+            print("invalid act",reward)
+            reward -= 8     
+        reward -= 1            
         return reward
-
     def optimize_model(self):
         if len(self.memory) < BATCH_SIZE:
             return
@@ -194,7 +200,7 @@ class PacmanAgent:
         else:
             # Random action
             action = random.randrange(N_ACTIONS)
-            while action == REVERSED[self.last_action]:
+            while action == REVERSED[self.last_action] or self.game.get_invalid_action(action):
                 action = random.randrange(N_ACTIONS)
             return torch.tensor([[action]], device=device, dtype=torch.long)
 
