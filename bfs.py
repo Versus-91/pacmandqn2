@@ -71,8 +71,8 @@ def isValid(x, y, grid, visited):
  
 # Driver code
 if __name__ == '__main__':
-    grid = [['0', '*', '0', 's'],
-            ['*', '0', 'd', '*'],
+    grid = [['0', '*', '0', '*'],
+            ['*', '0', '*', '*'],
             ['0', '*', '0', '*'],
             ['*', '*', 'd', '0']]
     grid = np.array(grid)

@@ -185,7 +185,7 @@ class GameController(object):
         info = GameState()
         if not self.pacman.validDirection(action):
             invalid_move = True
-        dt = self.clock.tick(60) / 1000.0
+        dt = self.clock.tick(120) / 1000.0
         self.textgroup.update(dt)
         self.pellets.update(dt)
         if not self.pause.paused:

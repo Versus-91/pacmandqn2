@@ -122,6 +122,7 @@ class PacmanAgent:
             else:
                 reward = -30
             return reward
+        
         progress =  int((info.collected_pellets / info.total_pellets) * 7)
         if self.score - prev_score == 10:
             reward += 10
@@ -134,12 +135,46 @@ class PacmanAgent:
             return reward
         if self.score - prev_score >= 200:
             return 16 + (self.score - prev_score // 200) * 2
+        index = np.where(info.frame == 5)
+        invalid_in_maze=False
+        if len(index[0]) != 0:
+            x = index[0][0]
+            y = index[1][0]
+            try:
+                upper_cell = info.frame[x + 1][y]
+                lower_cell = info.frame[x - 1][y]
+                right_cell = info.frame[x][y + 1]
+                left_cell = info.frame[x][y - 1]
+            except IndexError:
+                upper_cell = 0
+                lower_cell = 0
+                right_cell = 0
+                left_cell = 0
+            if info.invalid_move:
+                if action == 0:
+                    if upper_cell == 1:
+                        invalid_in_maze=True
+                        print("up wall")
+                elif action == 1:
+                    if lower_cell == 1:
+                        invalid_in_maze=True
+                        print("down wall")
+                elif action == 2:
+                    if left_cell == 1:
+                        invalid_in_maze=True
+                        print("left wall")
+                elif action == 3:
+                    if right_cell == 1:
+                        invalid_in_maze=True
+                        print("right wall")                 
         if hit_ghost:
             reward -= 20
-        if (info.ghost_distance >=1 and info.ghost_distance < 5):
+        if (info.ghost_distance >1 and info.ghost_distance < 5):
             if  self.prev_info.ghost_distance >= info.ghost_distance:
                 reward += 3
             elif self.prev_info.ghost_distance < info.ghost_distance:
+                reward -= 3
+            if invalid_in_maze:
                 reward -= 3
             return reward
         if self.prev_info.food_distance >= info.food_distance and info.food_distance != -1:
@@ -151,9 +186,8 @@ class PacmanAgent:
         if not (info.ghost_distance >=1 and info.ghost_distance < 5):
             if action == REVERSED[self.last_action] and not info.invalid_move:
                 reward -= 2
-        if info.invalid_move:
-            reward -= 8     
-            print("invalid act",reward)
+        if invalid_in_maze:
+            reward -= 8
         reward -= 1            
         return reward
     def optimize_model(self):
@@ -197,8 +231,10 @@ class PacmanAgent:
         if rand > epsilon:
             with torch.no_grad():
                 q_values = self.policy(state)
-            vals = q_values.max(1)[1]
-            return vals.view(1, 1)
+            best_action = q_values.max(1)[1].view(1, 1)
+            if self.game.get_invalid_action(best_action.item()):
+                print("agent made invalid move.")
+            return best_action
         else:
             # Random action
             action = random.randrange(N_ACTIONS)
@@ -301,12 +337,12 @@ class PacmanAgent:
             if self.steps % 2 == 0:
                 self.optimize_model()
             self.last_action = action_t
-            if done:
+            if done or lives <= 0:
 
                 epsilon = max(EPS_END, EPS_START - (EPS_START - EPS_END)* self.counter / EPS_DECAY)
-                print("epsilon: ",epsilon,"reward: ",self.score,"steps: ",self.steps,
-                      "completion: ",round((info.collected_pellets / info.total_pellets)*100,2)
-                      ,"spisode",self.episode)
+                print("epsilon: ",round(epsilon,2),"reward: ",self.score,"steps: ",self.steps,
+                      "completion: ",str(round((info.collected_pellets / info.total_pellets)*100,2))+ " %"
+                      ,"episode: ",self.episode)
                 self.writer.add_scalar('episode reward', self.score, global_step=self.episode)
                 # assert reward_sum == reward
                 self.rewards.append(self.score)
@@ -354,7 +390,7 @@ class PacmanAgent:
 
 if __name__ == '__main__':
     agent = PacmanAgent()
-    #agent.load_model(name="1900-599094", eval=False)
+    agent.load_model(name="1100-216376", eval=False)
     agent.rewards = []
     while True:
         agent.train()
