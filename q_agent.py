@@ -167,7 +167,7 @@ class PacmanAgent:
         invalid_in_maze= self.get_neighbors(info,action)        
         if hit_ghost:
             reward -= 20
-        if (info.ghost_distance >=1 and info.ghost_distance < 10):
+        if (info.ghost_distance >=1 and info.ghost_distance < 8):
             if  self.prev_info.ghost_distance > info.ghost_distance:
                 reward -= 3
             elif self.prev_info.ghost_distance <= info.ghost_distance:

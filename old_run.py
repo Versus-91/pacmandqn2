@@ -227,8 +227,6 @@ class GameController(object):
             info.powerup_distance = minDistance(info.frame,5,4)
             info.ghost_distance = minDistance(info.frame,5,-6)
             info.scared_ghost_distance = minDistance(info.frame,5,6)
-        else:
-            print("died")
         
         return (state, self.score, self.lives == 0 or (self.pellets.isEmpty()), info)
 
