@@ -112,7 +112,40 @@ class PacmanAgent:
             self.policy.parameters(), lr=LEARNING_RATE
         )
         self.prev_info =GameState()
-
+    def get_neighbors(self,info,action):
+        index = np.where(info.frame == 5)
+        invalid_in_maze = False
+        if len(index[0]) != 0:
+            x = index[0][0]
+            y = index[1][0]
+            try:
+                upper_cell = info.frame[x - 1][y]
+                lower_cell = info.frame[x + 1][y]
+                right_cell = info.frame[x][y + 1]
+                left_cell = info.frame[x][y - 1]
+            except IndexError:
+                upper_cell = 0
+                lower_cell = 0
+                right_cell = 0
+                left_cell = 0
+            if info.invalid_move:
+                if action == 0:
+                    if upper_cell == 1:
+                        invalid_in_maze=True
+                        print("up wall")
+                elif action == 1:
+                    if lower_cell == 1:
+                        invalid_in_maze=True
+                        print("down wall")
+                elif action == 2:
+                    if left_cell == 1:
+                        invalid_in_maze=True
+                        print("left wall")
+                elif action == 3:
+                    if right_cell == 1:
+                        invalid_in_maze=True
+                        print("right wall")   
+        return invalid_in_maze
     def get_reward(self, done, lives, hit_ghost, action, prev_score,info:GameState):
         reward = 0
         if done:
@@ -141,8 +174,8 @@ class PacmanAgent:
             x = index[0][0]
             y = index[1][0]
             try:
-                upper_cell = info.frame[x + 1][y]
-                lower_cell = info.frame[x - 1][y]
+                upper_cell = info.frame[x - 1][y]
+                lower_cell = info.frame[x + 1][y]
                 right_cell = info.frame[x][y + 1]
                 left_cell = info.frame[x][y - 1]
             except IndexError:
@@ -232,8 +265,6 @@ class PacmanAgent:
             with torch.no_grad():
                 q_values = self.policy(state)
             best_action = q_values.max(1)[1].view(1, 1)
-            if self.game.get_invalid_action(best_action.item()):
-                print("agent made invalid move.")
             return best_action
         else:
             # Random action
@@ -319,7 +350,7 @@ class PacmanAgent:
                     obs, self.score, done, info = self.game.step(
                         action_t)
                     pacman_pos_new = self.pacman_pos(obs[2])
-                    if pacman_pos_new != pacman_pos or  lives != info.lives or info.invalid_move:
+                    if pacman_pos_new != pacman_pos or lives != info.lives or self.get_neighbors(info,action_t):
                         pacman_pos = pacman_pos_new
                         break
                 else:
@@ -390,7 +421,7 @@ class PacmanAgent:
 
 if __name__ == '__main__':
     agent = PacmanAgent()
-    agent.load_model(name="1100-216376", eval=False)
+    agent.load_model(name="1600-336765", eval=False)
     agent.rewards = []
     while True:
         agent.train()
