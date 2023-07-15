@@ -200,8 +200,6 @@ class GameController(object):
             if not self.pause.paused:
                 self.pacman.update(dt, action)
         else:
-            state = self.get_state()
-            info.frame = self.get_frame()
             self.pacman.update(dt)
         # if self.flashBG:
         #     self.flashTimer += dt
@@ -217,22 +215,21 @@ class GameController(object):
             afterPauseMethod()
         self.checkEvents()
         self.render()
-        if len(state) == 0:
-            state = self.get_state()
+        state = self.get_state()
         info.lives = self.lives
         info.invalid_move = invalid_move
         info.total_pellets = len(self.pellets.pelletList) + len(self.eatenPellets)
         info.collected_pellets = len(self.eatenPellets)
-        if len(info.frame) == 0:
-            info.frame = self.get_frame()
-        index = np.where(info.frame == 5)
-        if len(index[0]) != 0:
+        info.frame = self.get_frame()
+        row_indices, _ = np.where(info.frame == 5)
+        if row_indices.size > 0:
             info.food_distance = minDistance(info.frame,5,3)
             info.powerup_distance = minDistance(info.frame,5,4)
             info.ghost_distance = minDistance(info.frame,5,-6)
             info.scared_ghost_distance = minDistance(info.frame,5,6)
         else:
-            print("missing pacman")
+            print("died")
+        
         return (state, self.score, self.lives == 0 or (self.pellets.isEmpty()), info)
 
     def checkEvents(self):

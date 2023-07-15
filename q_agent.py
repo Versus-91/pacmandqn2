@@ -37,7 +37,7 @@ EPS_END = 0.05
 EPS_DECAY = 400000
 MAX_STEPS = 800000
 
-
+moves = {0:"up",1:"down",2:"left",3:"right"}
 class ExperienceReplay:
     def __init__(self, capacity) -> None:
         self.exps = deque(maxlen=capacity)
@@ -113,11 +113,11 @@ class PacmanAgent:
         )
         self.prev_info =GameState()
     def get_neighbors(self,info,action):
-        index = np.where(info.frame == 5)
+        row_indices, col_indices = np.where(info.frame == 5)
         invalid_in_maze = False
-        if len(index[0]) != 0:
-            x = index[0][0]
-            y = index[1][0]
+        if row_indices.size > 0:
+            x = row_indices[0]
+            y = col_indices[0]
             try:
                 upper_cell = info.frame[x - 1][y]
                 lower_cell = info.frame[x + 1][y]
@@ -163,15 +163,15 @@ class PacmanAgent:
             reward += progress
             return reward
         if self.score - prev_score >= 200:
-            return 16 + (self.score - prev_score // 200) * 2
+            return 16 + (self.score - prev_score // 200) * 3
         invalid_in_maze= self.get_neighbors(info,action)        
         if hit_ghost:
             reward -= 20
-        if (info.ghost_distance >1 and info.ghost_distance < 5):
-            if  self.prev_info.ghost_distance >= info.ghost_distance:
-                reward += 3
-            elif self.prev_info.ghost_distance < info.ghost_distance:
+        if (info.ghost_distance >=1 and info.ghost_distance < 10):
+            if  self.prev_info.ghost_distance > info.ghost_distance:
                 reward -= 3
+            elif self.prev_info.ghost_distance <= info.ghost_distance:
+                reward += 3
             if invalid_in_maze:
                 reward -= 3
             return reward
@@ -179,14 +179,18 @@ class PacmanAgent:
                 reward += 3
         elif self.prev_info.food_distance < info.food_distance and info.food_distance != -1:
             reward -= 2
-        if info.scared_ghost_distance < 8 and self.prev_info.scared_ghost_distance >= info.scared_ghost_distance and info.scared_ghost_distance != -1:
-            reward += 3
+        if info.scared_ghost_distance <= 10 and self.prev_info.scared_ghost_distance >= info.scared_ghost_distance and info.scared_ghost_distance != -1:
+            reward += 4
         if not (info.ghost_distance >=1 and info.ghost_distance < 5):
             if action == REVERSED[self.last_action] and not info.invalid_move:
                 reward -= 2
         if invalid_in_maze:
-            print("made invalid move",action)
+            print("made invalid move:",moves[action])
             reward -= 8
+        else:
+            if info.food_distance== 1 or info.powerup_distance == 1:
+                if action == self.last_action:
+                    reward += 2
         reward -= 1
 
         return reward
@@ -312,11 +316,16 @@ class PacmanAgent:
         while True:
             action = self.select_action(state)
             action_t = action.item()
+            counter =0
             while True:
                 if not done:
                     obs, self.score, done, info = self.game.step(
                         action_t)
+                    counter += 1
                     pacman_pos_new = self.pacman_pos(obs[2])
+                    if counter > 40:
+                        print("something went wron")
+                        break
                     if pacman_pos_new != pacman_pos or lives != info.lives or self.get_neighbors(info,action_t):
                         pacman_pos = pacman_pos_new
                         break
@@ -326,6 +335,10 @@ class PacmanAgent:
             if lives != info.lives:
                 hit_ghost = True
                 lives -= 1
+                for i in range(3):
+                       _, _, _, _ = self.game.step(
+                        action_t)
+
             next_state = self.process_state(obs)
             reward_ = self.get_reward(done, lives, hit_ghost, action_t, last_score, info)
             self.prev_info = info
@@ -388,7 +401,7 @@ class PacmanAgent:
 
 if __name__ == '__main__':
     agent = PacmanAgent()
-    agent.load_model(name="1600-336765", eval=False)
+    #agent.load_model(name="1700-362053", eval=False)
     agent.rewards = []
     while True:
         agent.train()
