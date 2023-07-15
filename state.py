@@ -6,7 +6,7 @@ class GameState:
         self.total_pellets = 0
         self.collected_pellets = 0
         self.frame = []
-        self.food_distance = 0
-        self.ghost_distance = 0
-        self.scared_ghost_distance = 0
-        self.powerup_distance = 0
+        self.food_distance = -1
+        self.ghost_distance = -1
+        self.scared_ghost_distance = -1
+        self.powerup_distance = -1

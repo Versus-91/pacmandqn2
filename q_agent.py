@@ -132,19 +132,15 @@ class PacmanAgent:
                 if action == 0:
                     if upper_cell == 1:
                         invalid_in_maze=True
-                        print("up wall")
                 elif action == 1:
                     if lower_cell == 1:
                         invalid_in_maze=True
-                        print("down wall")
                 elif action == 2:
                     if left_cell == 1:
                         invalid_in_maze=True
-                        print("left wall")
                 elif action == 3:
                     if right_cell == 1:
                         invalid_in_maze=True
-                        print("right wall")   
         return invalid_in_maze
     def get_reward(self, done, lives, hit_ghost, action, prev_score,info:GameState):
         reward = 0
@@ -168,38 +164,7 @@ class PacmanAgent:
             return reward
         if self.score - prev_score >= 200:
             return 16 + (self.score - prev_score // 200) * 2
-        index = np.where(info.frame == 5)
-        invalid_in_maze=False
-        if len(index[0]) != 0:
-            x = index[0][0]
-            y = index[1][0]
-            try:
-                upper_cell = info.frame[x - 1][y]
-                lower_cell = info.frame[x + 1][y]
-                right_cell = info.frame[x][y + 1]
-                left_cell = info.frame[x][y - 1]
-            except IndexError:
-                upper_cell = 0
-                lower_cell = 0
-                right_cell = 0
-                left_cell = 0
-            if info.invalid_move:
-                if action == 0:
-                    if upper_cell == 1:
-                        invalid_in_maze=True
-                        print("up wall")
-                elif action == 1:
-                    if lower_cell == 1:
-                        invalid_in_maze=True
-                        print("down wall")
-                elif action == 2:
-                    if left_cell == 1:
-                        invalid_in_maze=True
-                        print("left wall")
-                elif action == 3:
-                    if right_cell == 1:
-                        invalid_in_maze=True
-                        print("right wall")                 
+        invalid_in_maze= self.get_neighbors(info,action)        
         if hit_ghost:
             reward -= 20
         if (info.ghost_distance >1 and info.ghost_distance < 5):
@@ -220,8 +185,10 @@ class PacmanAgent:
             if action == REVERSED[self.last_action] and not info.invalid_move:
                 reward -= 2
         if invalid_in_maze:
+            print("made invalid move",action)
             reward -= 8
-        reward -= 1            
+        reward -= 1
+
         return reward
     def optimize_model(self):
         if len(self.memory) < BATCH_SIZE:

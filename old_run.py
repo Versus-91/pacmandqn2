@@ -225,10 +225,14 @@ class GameController(object):
         info.collected_pellets = len(self.eatenPellets)
         if len(info.frame) == 0:
             info.frame = self.get_frame()
-        info.food_distance = minDistance(info.frame,5,3)
-        info.powerup_distance = minDistance(info.frame,5,4)
-        info.ghost_distance = minDistance(info.frame,5,-6)
-        info.scared_ghost_distance = minDistance(info.frame,5,6)
+        index = np.where(info.frame == 5)
+        if len(index[0]) != 0:
+            info.food_distance = minDistance(info.frame,5,3)
+            info.powerup_distance = minDistance(info.frame,5,4)
+            info.ghost_distance = minDistance(info.frame,5,-6)
+            info.scared_ghost_distance = minDistance(info.frame,5,6)
+        else:
+            print("missing pacman")
         return (state, self.score, self.lives == 0 or (self.pellets.isEmpty()), info)
 
     def checkEvents(self):
