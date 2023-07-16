@@ -34,8 +34,8 @@ Experience = namedtuple('Experience', field_names=[
 REVERSED = {0: 1, 1: 0, 2: 3, 3: 2}
 EPS_START = 1.0
 EPS_END = 0.05
-EPS_DECAY = 400000
-MAX_STEPS = 800000
+EPS_DECAY = 300000
+MAX_STEPS = 600000
 
 moves = {0:"up",1:"down",2:"left",3:"right"}
 class ExperienceReplay:
@@ -156,7 +156,7 @@ class PacmanAgent:
         if self.score - prev_score == 10:
             reward += 10
         if self.score - prev_score == 50:
-            reward += 13
+            reward += 10
             if info.ghost_distance != -1 and info.ghost_distance < 10:
                 reward += 3
         if reward > 0:
@@ -167,32 +167,31 @@ class PacmanAgent:
         invalid_in_maze= self.get_neighbors(info,action)        
         if hit_ghost:
             reward -= 20
-        if (info.ghost_distance >=1 and info.ghost_distance < 8):
-            if  self.prev_info.ghost_distance > info.ghost_distance:
-                reward -= 3
-            elif self.prev_info.ghost_distance <= info.ghost_distance:
-                reward += 3
-            if invalid_in_maze:
-                reward -= 3
-            return reward
-        if self.prev_info.food_distance >= info.food_distance and info.food_distance != -1:
-                reward += 3
+        # if (info.ghost_distance >=1 and info.ghost_distance < 8):
+        #     if  self.prev_info.ghost_distance > info.ghost_distance:
+        #         reward -= 3
+        #     elif self.prev_info.ghost_distance < info.ghost_distance:
+        #         reward += 3
+        #     if invalid_in_maze:
+        #         reward -= 3
+        #     return reward            
+        if self.prev_info.food_distance > info.food_distance and info.food_distance != -1:
+            reward += 3
         elif self.prev_info.food_distance < info.food_distance and info.food_distance != -1:
             reward -= 2
-        if info.scared_ghost_distance <= 10 and self.prev_info.scared_ghost_distance >= info.scared_ghost_distance and info.scared_ghost_distance != -1:
-            reward += 4
-        if not (info.ghost_distance >=1 and info.ghost_distance < 5):
-            if action == REVERSED[self.last_action] and not info.invalid_move:
-                reward -= 2
+        # if info.scared_ghost_distance <= 10 and self.prev_info.scared_ghost_distance >= info.scared_ghost_distance and info.scared_ghost_distance != -1:
+        #     reward += 4
+        # if not (info.ghost_distance >=1 and info.ghost_distance < 5):
+        #     if action == REVERSED[self.last_action] and not info.invalid_move:
+        #         reward -= 2
         if invalid_in_maze:
-            print("made invalid move:",moves[action])
             reward -= 8
         else:
-            if info.food_distance== 1 or info.powerup_distance == 1:
-                if action == self.last_action:
-                    reward += 2
+            if self.last_action == action:
+                reward += 2
         reward -= 1
-
+        assert(reward >=-30 and reward <= 30)
+        self.writer.add_scalar('rewards', reward, global_step=self.steps)
         return reward
     def optimize_model(self):
         if len(self.memory) < BATCH_SIZE:
@@ -274,6 +273,8 @@ class PacmanAgent:
                 os.getcwd() + "\\results", f"policy-model-{self.episode}-{self.steps}.pt"))
             torch.save(self.target.state_dict(), os.path.join(
                 os.getcwd() + "\\results", f"target-model-{self.episode}-{self.steps}.pt"))
+            torch.save(self.optimizer.state_dict(), os.path.join(
+                os.getcwd() + "\\results", f"optimizer-{self.episode}-{self.steps}.pt"))
 
     def load_model(self, name, eval=False):
         name_parts = name.split("-")
