@@ -174,6 +174,17 @@ class GameController(object):
         self.checkEvents()
         self.render()
         self.get_state()
+        frame = self.get_frame()
+        row_indices, _ = np.where(frame == 5)
+        if row_indices.size > 0:
+            a = 5
+        else:
+            in_portal = self.pacman.teleporting
+            food_distance = minDistance(frame,5,3)
+            if not in_portal and food_distance == -1:
+                print("got here")
+
+
     def get_invalid_action(self,action):
          if not self.pacman.validDirection(action):
             return True
@@ -227,7 +238,8 @@ class GameController(object):
             info.powerup_distance = minDistance(info.frame,5,4)
             info.ghost_distance = minDistance(info.frame,5,-6)
             info.scared_ghost_distance = minDistance(info.frame,5,6)
-        
+        else:
+            info.in_portal = self.pacman.teleporting
         return (state, self.score, self.lives == 0 or (self.pellets.isEmpty()), info)
 
     def checkEvents(self):

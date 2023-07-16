@@ -10,3 +10,5 @@ class GameState:
         self.ghost_distance = -1
         self.scared_ghost_distance = -1
         self.powerup_distance = -1
+        self.in_portal = False
+

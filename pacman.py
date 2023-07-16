@@ -15,6 +15,7 @@ class Pacman(Entity):
         self.setBetweenNodes(LEFT)
         self.alive = True
         self.sprites = PacmanSprites(self)
+        self.teleporting = False
 
     def reset(self):
         Entity.reset(self)
@@ -36,6 +37,9 @@ class Pacman(Entity):
             self.node = self.target
             if self.node.neighbors[PORTAL] is not None:
                 self.node = self.node.neighbors[PORTAL]
+                self.teleporting = True
+            else:
+                self.teleporting = False
             self.target = self.getNewTarget(direction)
             if self.target is not self.node:
                 self.direction = direction

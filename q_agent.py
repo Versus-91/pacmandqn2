@@ -25,7 +25,7 @@ BATCH_SIZE = 128
 SAVE_EPISODE_FREQ = 100
 GAMMA = 0.99
 MOMENTUM = 0.95
-MEMORY_SIZE = 30000
+MEMORY_SIZE = 15000
 LEARNING_RATE = 0.0003
 
 Experience = namedtuple('Experience', field_names=[
@@ -176,7 +176,7 @@ class PacmanAgent:
         #         reward -= 3
         #     return reward            
         if self.prev_info.food_distance > info.food_distance and info.food_distance != -1:
-            reward += 3
+            reward += 4
         elif self.prev_info.food_distance < info.food_distance and info.food_distance != -1:
             reward -= 2
         # if info.scared_ghost_distance <= 10 and self.prev_info.scared_ghost_distance >= info.scared_ghost_distance and info.scared_ghost_distance != -1:
@@ -187,8 +187,10 @@ class PacmanAgent:
         if invalid_in_maze:
             reward -= 8
         else:
-            if self.last_action == action:
+            if self.last_action == action and not hit_ghost:
                 reward += 2
+        if not info.in_portal and info.food_distance == -1:
+            reward -= 8
         reward -= 1
         assert(reward >=-30 and reward <= 30)
         self.writer.add_scalar('rewards', reward, global_step=self.steps)
@@ -377,17 +379,21 @@ class PacmanAgent:
             while True:
                 action = self.select_action(state, eval=True)
                 action_t = action.item()
+                counter = 0
                 while True:
                     if not done:
                         obs, self.score, done, info = self.game.step(
                             action_t)
+                        counter += 1
                         pacman_pos_new = self.pacman_pos(obs[2])
-                        if pacman_pos_new != pacman_pos or  lives != info.lives or info.invalid_move:
+                        if counter > 40:
+                            print("something went wron")
+                            break
+                        if pacman_pos_new != pacman_pos or lives != info.lives or self.get_neighbors(info,action_t):
                             pacman_pos = pacman_pos_new
                             break
                     else:
                         break
-                lives != info.lives
                 state = self.process_state(obs)
                 if done:
                     self.rewards.append(reward)
