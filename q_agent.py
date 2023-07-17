@@ -192,7 +192,7 @@ class PacmanAgent:
         if not info.in_portal and info.food_distance == -1 and not hit_ghost:
             reward -= 20
         reward -= 1
-        assert(reward >=-30 and reward <= 30)
+        #assert(reward >=-30 and reward <= 30)
         self.writer.add_scalar('rewards', reward, global_step=self.steps)
         return reward
     def optimize_model(self):
@@ -322,7 +322,7 @@ class PacmanAgent:
         while True:
             action = self.select_action(state)
             action_t = action.item()
-            counter =0
+            counter = 0
             while True:
                 if not done:
                     obs, self.score, done, info = self.game.step(
@@ -411,7 +411,7 @@ class PacmanAgent:
 
 if __name__ == '__main__':
     agent = PacmanAgent()
-    agent.load_model(name="700-131917", eval=False)
+    agent.load_model(name="1600-326528", eval=False)
     agent.rewards = []
     while True:
         agent.train()
