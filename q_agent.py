@@ -156,9 +156,7 @@ class PacmanAgent:
         if self.score - prev_score == 10:
             reward += 10
         if self.score - prev_score == 50:
-            reward += 10
-            if info.ghost_distance != -1 and info.ghost_distance < 10:
-                reward += 3
+            reward += 12
         if reward > 0:
             reward += progress
             return reward
@@ -175,23 +173,16 @@ class PacmanAgent:
         #     if invalid_in_maze:
         #         reward -= 3
         #     return reward            
-        if self.prev_info.food_distance > info.food_distance and info.food_distance != -1:
-            reward += 4
+        if self.prev_info.food_distance >= info.food_distance and info.food_distance != -1:
+            reward += 3
         elif self.prev_info.food_distance < info.food_distance and info.food_distance != -1:
             reward -= 2
-        # if info.scared_ghost_distance <= 10 and self.prev_info.scared_ghost_distance >= info.scared_ghost_distance and info.scared_ghost_distance != -1:
-        #     reward += 4
-        # if not (info.ghost_distance >=1 and info.ghost_distance < 5):
-        #     if action == REVERSED[self.last_action] and not info.invalid_move:
-        #         reward -= 2
+        if action == REVERSED[self.last_action] and not info.invalid_move:
+                reward -= 2
         if invalid_in_maze:
             reward -= 8
-        else:
-            if self.last_action == action and not hit_ghost:
-                reward += 2
         if not info.in_portal and info.food_distance == -1 and not hit_ghost:
             reward -= 20
-        reward -= 1
         #assert(reward >=-30 and reward <= 30)
         self.writer.add_scalar('rewards', reward, global_step=self.steps)
         return reward
@@ -411,8 +402,7 @@ class PacmanAgent:
 
 if __name__ == '__main__':
     agent = PacmanAgent()
-    agent.load_model(name="1900-408887", eval=False)
-    agent.rewards = []
+    #agent.load_model(name="1900-408887", eval=False)
     while True:
         agent.train()
         #agent.test()
