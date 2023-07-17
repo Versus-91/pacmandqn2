@@ -280,13 +280,14 @@ class PacmanAgent:
         path = os.path.join(
             os.getcwd() + "\\results", f"policy-model-{name}.pt")
         self.policy.load_state_dict(torch.load(path))
-        path = os.path.join(
-            os.getcwd() + "\\results", f"optimizer-{name}.pt")
-        self.optimizer.load_state_dict(torch.load(path))
+
         if eval:
             self.target.eval()
             self.policy.eval()
         else:
+            path = os.path.join(
+                os.getcwd() + "\\results", f"optimizer-{name}.pt")
+            self.optimizer.load_state_dict(torch.load(path))
             self.target.train()
             self.policy.train()
     def pacman_pos(self,state):
@@ -380,11 +381,11 @@ class PacmanAgent:
                             action_t)
                         counter += 1
                         pacman_pos_new = self.pacman_pos(obs[2])
-                        if counter > 40:
-                            print("something went wron")
-                            break
                         if pacman_pos_new != pacman_pos or lives != info.lives or self.get_neighbors(info,action_t):
                             pacman_pos = pacman_pos_new
+                            break
+                        if counter > 40:
+                            print("something went wron")
                             break
                     else:
                         break
@@ -402,7 +403,8 @@ class PacmanAgent:
 
 if __name__ == '__main__':
     agent = PacmanAgent()
-    #agent.load_model(name="1900-408887", eval=False)
+    agent.load_model(name="1900-599094", eval=True)
+    agent.episode = 0
     while True:
-        agent.train()
-        #agent.test()
+        #agent.train()
+        agent.test()
