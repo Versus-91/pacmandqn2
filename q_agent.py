@@ -25,7 +25,7 @@ BATCH_SIZE = 128
 SAVE_EPISODE_FREQ = 100
 GAMMA = 0.99
 MOMENTUM = 0.95
-MEMORY_SIZE = 15000
+MEMORY_SIZE = 13000
 LEARNING_RATE = 0.0003
 
 Experience = namedtuple('Experience', field_names=[
@@ -189,8 +189,8 @@ class PacmanAgent:
         else:
             if self.last_action == action and not hit_ghost:
                 reward += 2
-        if not info.in_portal and info.food_distance == -1:
-            reward -= 8
+        if not info.in_portal and info.food_distance == -1 and not hit_ghost:
+            reward -= 20
         reward -= 1
         assert(reward >=-30 and reward <= 30)
         self.writer.add_scalar('rewards', reward, global_step=self.steps)
@@ -289,6 +289,9 @@ class PacmanAgent:
         path = os.path.join(
             os.getcwd() + "\\results", f"policy-model-{name}.pt")
         self.policy.load_state_dict(torch.load(path))
+        path = os.path.join(
+            os.getcwd() + "\\results", f"optimizer-{name}.pt")
+        self.optimizer.load_state_dict(torch.load(path))
         if eval:
             self.target.eval()
             self.policy.eval()
@@ -327,7 +330,7 @@ class PacmanAgent:
                     counter += 1
                     pacman_pos_new = self.pacman_pos(obs[2])
                     if counter > 40:
-                        print("something went wron")
+                        print("something went wrong")
                         break
                     if pacman_pos_new != pacman_pos or lives != info.lives or self.get_neighbors(info,action_t):
                         pacman_pos = pacman_pos_new
@@ -408,7 +411,7 @@ class PacmanAgent:
 
 if __name__ == '__main__':
     agent = PacmanAgent()
-    #agent.load_model(name="1700-362053", eval=False)
+    agent.load_model(name="700-131917", eval=False)
     agent.rewards = []
     while True:
         agent.train()
